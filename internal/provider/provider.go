@@ -5,7 +5,9 @@ package provider
 
 import (
 	"context"
-	"net/http"
+	"github.com/hashicorp/terraform-plugin-framework/path"
+	"golang.org/x/crypto/ssh"
+	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -16,77 +18,190 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
 
-// Ensure ScaffoldingProvider satisfies various provider interfaces.
-var _ provider.Provider = &ScaffoldingProvider{}
-var _ provider.ProviderWithFunctions = &ScaffoldingProvider{}
-var _ provider.ProviderWithEphemeralResources = &ScaffoldingProvider{}
+// Ensure CiscoIosProvider satisfies various provider interfaces.
+var _ provider.Provider = &CiscoIosProvider{}
+var _ provider.ProviderWithFunctions = &CiscoIosProvider{}
+var _ provider.ProviderWithEphemeralResources = &CiscoIosProvider{}
 
-// ScaffoldingProvider defines the provider implementation.
-type ScaffoldingProvider struct {
+// CiscoIosProvider defines the provider implementation.
+type CiscoIosProvider struct {
 	// version is set to the provider version on release, "dev" when the
 	// provider is built and ran locally, and "test" when running acceptance
 	// testing.
 	version string
 }
 
-// ScaffoldingProviderModel describes the provider data model.
-type ScaffoldingProviderModel struct {
-	Endpoint types.String `tfsdk:"endpoint"`
+// CiscoIosProviderModel describes the provider data model.
+type CiscoIosProviderModel struct {
+	Host     types.String `tfsdk:"host"`
+	Username types.String `tfsdk:"username"`
+	Password types.String `tfsdk:"password"`
 }
 
-func (p *ScaffoldingProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
-	resp.TypeName = "scaffolding"
+func (p *CiscoIosProvider) Metadata(ctx context.Context, req provider.MetadataRequest, resp *provider.MetadataResponse) {
+	resp.TypeName = "ios"
 	resp.Version = p.version
 }
 
-func (p *ScaffoldingProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
+func (p *CiscoIosProvider) Schema(ctx context.Context, req provider.SchemaRequest, resp *provider.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
-			"endpoint": schema.StringAttribute{
-				MarkdownDescription: "Example provider attribute",
-				Optional:            true,
+			"host": schema.StringAttribute{
+				Optional: true,
+			},
+			"username": schema.StringAttribute{
+				Optional: true,
+			},
+			"password": schema.StringAttribute{
+				Optional:  true,
+				Sensitive: true,
 			},
 		},
 	}
 }
 
-func (p *ScaffoldingProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
-	var data ScaffoldingProviderModel
+func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.ConfigureRequest, resp *provider.ConfigureResponse) {
+	var config CiscoIosProviderModel
+	diags := req.Config.Get(ctx, &config)
+	resp.Diagnostics.Append(diags...)
+	if resp.Diagnostics.HasError() {
+		return
+	}
 
-	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
+	if config.Host.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Unknown Cisco IOS Host",
+			"The provider cannot create the Cisco IOS ssh client as there is an unknown configuration value for the Cisco IOS host. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the IOS_HOST environment variable.",
+		)
+	}
+
+	if config.Username.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("username"),
+			"Unknown Cisco IOS Username",
+			"The provider cannot create the Cisco IOS client as there is an unknown configuration value for the Cisco IOS username. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the IOS_USERNAME environment variable.",
+		)
+	}
+
+	if config.Password.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password"),
+			"Unknown Cisco IOS Password",
+			"The provider cannot create the Cisco IOS client as there is an unknown configuration value for the Cisco IOS password. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the IOS_PASSWORD environment variable.",
+		)
+	}
 
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
-	// Configuration values are now available.
-	// if data.Endpoint.IsNull() { /* ... */ }
+	host := os.Getenv("IOS_HOST")
+	username := os.Getenv("IOS_USERNAME")
+	password := os.Getenv("IOS_PASSWORD")
 
-	// Example client configuration for data sources and resources
-	client := http.DefaultClient
-	resp.DataSourceData = client
-	resp.ResourceData = client
+	if !config.Host.IsNull() {
+		host = config.Host.ValueString()
+	}
+
+	if !config.Username.IsNull() {
+		username = config.Username.ValueString()
+	}
+
+	if !config.Password.IsNull() {
+		password = config.Password.ValueString()
+	}
+
+	if host == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("host"),
+			"Missing Cisco IOS Host",
+			"The provider cannot create the Cisco IOS client as there is a missing or empty value for the Cisco IOS host. "+
+				"Set the host value in the configuration or use the IOS_HOST environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if username == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("username"),
+			"Missing Cisco IOS Username",
+			"The provider cannot create the Cisco IOS client as there is a missing or empty value for the Cisco IOS username. "+
+				"Set the username value in the configuration or use the IOS_USERNAME environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if password == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("password"),
+			"Missing Cisco IOS Password",
+			"The provider cannot create the Cisco IOS client as there is a missing or empty value for the Cisco IOS password. "+
+				"Set the password value in the configuration or use the IOS_PASSWORD environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
+	if resp.Diagnostics.HasError() {
+		return
+	}
+
+	sshConfig := &ssh.ClientConfig{
+		User: username,
+		Auth: []ssh.AuthMethod{
+			ssh.Password(password),
+		},
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	}
+
+	client, err := ssh.Dial("tcp", host, sshConfig)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create Cisco IOS Client",
+			"An unexpected error occurred when creating the Cisco IOS client. "+
+				"If the error is not clear, please contact the provider developers.\n\n"+
+				"Cisco IOS Error: "+err.Error(),
+		)
+		return
+	}
+
+	session, err := client.NewSession()
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Unable to Create Cisco IOS Client",
+			"An unexpected error occurred when creating the Cisco IOS client. "+
+				"If the error is not clear, please contact the provider developers.\n\n"+
+				"Cisco IOS Error: "+err.Error(),
+		)
+		return
+	}
+
+	resp.DataSourceData = session
+	resp.ResourceData = session
 }
 
-func (p *ScaffoldingProvider) Resources(ctx context.Context) []func() resource.Resource {
+func (p *CiscoIosProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewExampleResource,
 	}
 }
 
-func (p *ScaffoldingProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
+func (p *CiscoIosProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
 	return []func() ephemeral.EphemeralResource{
 		NewExampleEphemeralResource,
 	}
 }
 
-func (p *ScaffoldingProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
+func (p *CiscoIosProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewExampleDataSource,
 	}
 }
 
-func (p *ScaffoldingProvider) Functions(ctx context.Context) []func() function.Function {
+func (p *CiscoIosProvider) Functions(ctx context.Context) []func() function.Function {
 	return []func() function.Function{
 		NewExampleFunction,
 	}
@@ -94,7 +209,7 @@ func (p *ScaffoldingProvider) Functions(ctx context.Context) []func() function.F
 
 func New(version string) func() provider.Provider {
 	return func() provider.Provider {
-		return &ScaffoldingProvider{
+		return &CiscoIosProvider{
 			version: version,
 		}
 	}
