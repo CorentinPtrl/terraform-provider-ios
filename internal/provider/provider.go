@@ -5,8 +5,8 @@ package provider
 
 import (
 	"context"
+	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/path"
-	"golang.org/x/crypto/ssh"
 	"os"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
@@ -149,15 +149,14 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 		return
 	}
 
-	sshConfig := &ssh.ClientConfig{
-		User: username,
-		Auth: []ssh.AuthMethod{
-			ssh.Password(password),
-		},
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
+	session := cgnet.Device{
+		Ip:       host,
+		Port:     "22",
+		Username: username,
+		Password: password,
+		ConnType: cgnet.SSH,
 	}
-
-	client, err := ssh.Dial("tcp", host, sshConfig)
+	err := session.Open()
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Unable to Create Cisco IOS Client",
@@ -168,24 +167,14 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 		return
 	}
 
-	session, err := client.NewSession()
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Unable to Create Cisco IOS Client",
-			"An unexpected error occurred when creating the Cisco IOS client. "+
-				"If the error is not clear, please contact the provider developers.\n\n"+
-				"Cisco IOS Error: "+err.Error(),
-		)
-		return
-	}
-
-	resp.DataSourceData = session
-	resp.ResourceData = session
+	resp.DataSourceData = &session
+	resp.ResourceData = &session
 }
 
 func (p *CiscoIosProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewExampleResource,
+		NewInterfaceResource,
 	}
 }
 
@@ -198,6 +187,8 @@ func (p *CiscoIosProvider) EphemeralResources(ctx context.Context) []func() ephe
 func (p *CiscoIosProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	return []func() datasource.DataSource{
 		NewExampleDataSource,
+		NewVlansDataSource,
+		NewInterfacesDataSource,
 	}
 }
 

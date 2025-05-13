@@ -10,6 +10,8 @@ require (
 )
 
 require (
+	github.com/CorentinPtrl/cisconf v0.0.3 // indirect
+	github.com/Letsu/cgnet v0.0.0-20231030204030-7d1407195322 // indirect
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
 	github.com/agext/levenshtein v1.2.2 // indirect
 	github.com/apparentlymart/go-textseg/v15 v15.0.0 // indirect
@@ -39,6 +41,7 @@ require (
 	github.com/kr/pretty v0.3.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
+	github.com/mcuadros/go-defaults v1.2.0 // indirect
 	github.com/mitchellh/copystructure v1.2.0 // indirect
 	github.com/mitchellh/go-testing-interface v1.14.1 // indirect
 	github.com/mitchellh/go-wordwrap v1.0.0 // indirect
