@@ -42,20 +42,19 @@ func (d *InterfacesDataSource) Schema(ctx context.Context, req datasource.Schema
 						"switchport": schema.StringAttribute{
 							Computed: true,
 						},
-						/*						"ips": schema.ListNestedAttribute{
-													Computed: true,
-													NestedObject: schema.NestedAttributeObject{
-														Attributes: map[string]schema.Attribute{
-															"ip": schema.StringAttribute{
-																Computed: true,
-															},
-															"mask": schema.StringAttribute{
-																Computed: true,
-															},
-														},
-													},
-												},
-						*/
+						"ips": schema.ListNestedAttribute{
+							Computed: true,
+							NestedObject: schema.NestedAttributeObject{
+								Attributes: map[string]schema.Attribute{
+									"ip": schema.StringAttribute{
+										Computed: true,
+									},
+									"mask": schema.StringAttribute{
+										Computed: true,
+									},
+								},
+							},
+						},
 						"description": schema.StringAttribute{
 							Computed: true,
 						},
@@ -116,7 +115,7 @@ func (d *InterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 	for _, inter := range runningConfig.Interfaces {
-		data.Interfaces = append(data.Interfaces, models.InterfaceFromCisconf(&inter))
+		data.Interfaces = append(data.Interfaces, models.InterfaceFromCisconf(ctx, &inter))
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

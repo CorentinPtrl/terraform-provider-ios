@@ -1,8 +1,11 @@
 package models
 
 import (
+	"context"
 	"github.com/CorentinPtrl/cisconf"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
 )
 
 type InterfacesDataSourceModel struct {
@@ -10,9 +13,9 @@ type InterfacesDataSourceModel struct {
 }
 
 type InterfaceModel struct {
-	ID         types.String `tfsdk:"id"`
-	Switchport types.String `tfsdk:"switchport"`
-	//	Ips         []IpInterfaceModel `tfsdk:"ips"`
+	ID          types.String `tfsdk:"id"`
+	Switchport  types.String `tfsdk:"switchport"`
+	Ips         types.List   `tfsdk:"ips"`
 	Description types.String `tfsdk:"description"`
 	Shutdown    types.Bool   `tfsdk:"shutdown"`
 }
@@ -22,13 +25,23 @@ type IpInterfaceModel struct {
 	Mask types.String `tfsdk:"mask"`
 }
 
-func InterfaceFromCisconf(iface *cisconf.CiscoInterface) InterfaceModel {
-	ips := make([]IpInterfaceModel, len(iface.Ips))
-	for i, ip := range iface.Ips {
-		ips[i] = IpInterfaceModel{
+func (ip IpInterfaceModel) AttributeTypes() map[string]attr.Type {
+	return map[string]attr.Type{
+		"ip":   types.StringType,
+		"mask": types.StringType,
+	}
+}
+
+func InterfaceFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) InterfaceModel {
+	ips := []types.Object{}
+	for _, ip := range iface.Ips {
+		value := IpInterfaceModel{
 			Ip:   types.StringValue(ip.Ip),
 			Mask: types.StringValue(ip.Subnet),
 		}
+		obj, _ := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
+		ips = append(ips, obj)
+
 	}
 	var switchport types.String
 	if iface.Switchport {
@@ -41,16 +54,20 @@ func InterfaceFromCisconf(iface *cisconf.CiscoInterface) InterfaceModel {
 		switchport = types.StringNull()
 	}
 
+	switchport = types.StringNull()
+
+	listValue, _ := types.ListValueFrom(ctx, types.ObjectType{}.WithAttributeTypes(IpInterfaceModel{}.AttributeTypes()), ips)
+
 	return InterfaceModel{
-		ID:         types.StringValue(iface.Parent.Identifier),
-		Switchport: switchport,
-		//		Ips:         ips,
+		ID:          types.StringValue(iface.Parent.Identifier),
+		Switchport:  switchport,
+		Ips:         listValue,
 		Description: types.StringValue(iface.Description),
 		Shutdown:    types.BoolValue(iface.Shutdown),
 	}
 }
 
-func InterfaceToCisconf(iface InterfaceModel) *cisconf.CiscoInterface {
+func InterfaceToCisconf(ctx context.Context, iface InterfaceModel) *cisconf.CiscoInterface {
 	cisIface := &cisconf.CiscoInterface{
 		Parent: cisconf.CiscoInterfaceParent{
 			Identifier: iface.ID.ValueString(),
@@ -67,13 +84,19 @@ func InterfaceToCisconf(iface InterfaceModel) *cisconf.CiscoInterface {
 	} else {
 		cisIface.Switchport = true
 	}
-
-	/*	for _, ip := range iface.Ips {
-			cisIface.Ips = append(cisIface.Ips, cisconf.Ip{
-				Ip:     ip.Ip.ValueString(),
-				Subnet: ip.Mask.ValueString(),
-			})
-		}
-	*/
+	cisIface.Switchport = false
+	ips := make([]types.Object, 0, len(iface.Ips.Elements()))
+	diags := iface.Ips.ElementsAs(ctx, &ips, false)
+	if diags.HasError() {
+		return nil
+	}
+	for _, ip := range ips {
+		var cisIp IpInterfaceModel
+		ip.As(ctx, &cisIp, basetypes.ObjectAsOptions{})
+		cisIface.Ips = append(cisIface.Ips, cisconf.Ip{
+			Ip:     cisIp.Ip.ValueString(),
+			Subnet: cisIp.Mask.ValueString(),
+		})
+	}
 	return cisIface
 }

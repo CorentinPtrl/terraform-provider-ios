@@ -42,20 +42,20 @@ func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaReque
 				Computed: true,
 				Optional: true,
 			},
-			/*			"ips": schema.ListNestedAttribute{
-						Computed: true,
-						Optional: true,
-						NestedObject: schema.NestedAttributeObject{
-							Attributes: map[string]schema.Attribute{
-								"ip": schema.StringAttribute{
-									Required: true,
-								},
-								"mask": schema.StringAttribute{
-									Required: true,
-								},
-							},
+			"ips": schema.ListNestedAttribute{
+				Computed: true,
+				Optional: true,
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"ip": schema.StringAttribute{
+							Required: true,
 						},
-					},*/
+						"mask": schema.StringAttribute{
+							Required: true,
+						},
+					},
+				},
+			},
 			"description": schema.StringAttribute{
 				Computed: true,
 				Optional: true,
@@ -124,10 +124,11 @@ func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceToCisconf(data))
+	marshal, err := cisconf.Diff(inter, *models.InterfaceToCisconf(ctx, data))
 	if err != nil {
 		return
 	}
+	tflog.Info(ctx, "whatf")
 	lines := strings.Split(string(marshal), "\n")
 	configs := []string{}
 	for _, line := range lines {
@@ -171,7 +172,7 @@ func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	data = models.InterfaceFromCisconf(&inter)
+	data = models.InterfaceFromCisconf(ctx, &inter)
 
 	// Write logs using the tflog package
 	// Documentation: https://terraform.io/plugin/log
@@ -217,7 +218,7 @@ func (r *InterfaceResource) Read(ctx context.Context, req resource.ReadRequest, 
 		}
 	}
 
-	data = models.InterfaceFromCisconf(&inter)
+	data = models.InterfaceFromCisconf(ctx, &inter)
 
 	// If applicable, this is a great opportunity to initialize any necessary
 	// provider client data and make a call using it.
@@ -266,10 +267,15 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceToCisconf(data))
+	marshal, err := cisconf.Diff(inter, *models.InterfaceToCisconf(ctx, data))
 	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to diff interface",
+			fmt.Sprintf("Unable to diff interface: %s", err),
+		)
 		return
 	}
+	tflog.Info(ctx, "Hello"+marshal)
 	lines := strings.Split(string(marshal), "\n")
 	configs := []string{}
 	for _, line := range lines {
@@ -313,7 +319,7 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	data = models.InterfaceFromCisconf(&inter)
+	data = models.InterfaceFromCisconf(ctx, &inter)
 
 	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
