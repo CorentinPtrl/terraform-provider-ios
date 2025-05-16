@@ -10,6 +10,7 @@ import (
 	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strings"
 	"terraform-provider-ios/internal/provider/models"
@@ -26,13 +27,12 @@ type InterfaceResource struct {
 }
 
 func (r *InterfaceResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_interface"
+	resp.TypeName = req.ProviderTypeName + "_switch_interface"
 }
 
 func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
-		// This description is used by the documentation generator and the language server.
-		MarkdownDescription: "Example resource",
+		MarkdownDescription: "Switch Interface resource",
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
@@ -42,19 +42,26 @@ func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaReque
 				Computed: true,
 				Optional: true,
 			},
-			"ips": schema.ListNestedAttribute{
+			"encapsulation": schema.StringAttribute{
 				Computed: true,
 				Optional: true,
-				NestedObject: schema.NestedAttributeObject{
-					Attributes: map[string]schema.Attribute{
-						"ip": schema.StringAttribute{
-							Required: true,
-						},
-						"mask": schema.StringAttribute{
-							Required: true,
-						},
-					},
-				},
+			},
+			"access_vlan": schema.Int32Attribute{
+				Optional: true,
+				Computed: true,
+			},
+			"allowed_vlans": schema.ListAttribute{
+				Computed:    true,
+				Optional:    true,
+				ElementType: types.Int32Type,
+			},
+			"spanning_tree_portfast": schema.StringAttribute{
+				Computed: true,
+				Optional: true,
+			},
+			"spanning_tree_bpdu_guard": schema.BoolAttribute{
+				Computed: true,
+				Optional: true,
 			},
 			"description": schema.StringAttribute{
 				Computed: true,
@@ -69,7 +76,6 @@ func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaReque
 }
 
 func (r *InterfaceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
-	// Prevent panic if the provider has not been configured.
 	if req.ProviderData == nil {
 		return
 	}
@@ -89,9 +95,8 @@ func (r *InterfaceResource) Configure(ctx context.Context, req resource.Configur
 }
 
 func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data models.InterfaceModel
+	var data models.InterfaceSwitchModel
 
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
@@ -124,11 +129,10 @@ func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceToCisconf(ctx, data))
+	marshal, err := cisconf.Diff(inter, *models.InterfaceSwitchToCisconf(ctx, data))
 	if err != nil {
 		return
 	}
-	tflog.Info(ctx, "whatf")
 	lines := strings.Split(string(marshal), "\n")
 	configs := []string{}
 	for _, line := range lines {
@@ -172,20 +176,14 @@ func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	data = models.InterfaceFromCisconf(ctx, &inter)
+	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
 
-	// Write logs using the tflog package
-	// Documentation: https://terraform.io/plugin/log
-	tflog.Trace(ctx, "created a resource")
-
-	// Save data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *InterfaceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data models.InterfaceModel
+	var data models.InterfaceSwitchModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
@@ -218,24 +216,14 @@ func (r *InterfaceResource) Read(ctx context.Context, req resource.ReadRequest, 
 		}
 	}
 
-	data = models.InterfaceFromCisconf(ctx, &inter)
+	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
 
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to read example, got error: %s", err))
-	//     return
-	// }
-
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data models.InterfaceModel
+	var data models.InterfaceSwitchModel
 
-	// Read Terraform plan data into the model
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
@@ -267,7 +255,7 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceToCisconf(ctx, data))
+	marshal, err := cisconf.Diff(inter, *models.InterfaceSwitchToCisconf(ctx, data))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to diff interface",
@@ -275,16 +263,14 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		)
 		return
 	}
-	tflog.Info(ctx, "Hello"+marshal)
 	lines := strings.Split(string(marshal), "\n")
 	configs := []string{}
 	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
+		configs = append(configs, line)
 	}
+	tflog.Info(ctx, marshal)
+	tflog.Info(ctx, fmt.Sprintf("%+v\n", inter))
+	tflog.Info(ctx, fmt.Sprintf("%+v\n", *models.InterfaceSwitchToCisconf(ctx, data)))
 	err = r.client.Configure(configs)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -319,16 +305,14 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	data = models.InterfaceFromCisconf(ctx, &inter)
+	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
 
-	// Save updated data into Terraform state
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
 func (r *InterfaceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
 	var data models.InterfaceModel
 
-	// Read Terraform prior state data into the model
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
@@ -343,12 +327,4 @@ func (r *InterfaceResource) Delete(ctx context.Context, req resource.DeleteReque
 		)
 		return
 	}
-
-	// If applicable, this is a great opportunity to initialize any necessary
-	// provider client data and make a call using it.
-	// httpResp, err := r.client.Do(httpReq)
-	// if err != nil {
-	//     resp.Diagnostics.AddError("Client Error", fmt.Sprintf("Unable to delete example, got error: %s", err))
-	//     return
-	// }
 }

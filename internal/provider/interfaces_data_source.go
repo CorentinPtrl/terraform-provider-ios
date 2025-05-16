@@ -10,6 +10,7 @@ import (
 	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"terraform-provider-ios/internal/provider/models"
 )
 
@@ -42,18 +43,25 @@ func (d *InterfacesDataSource) Schema(ctx context.Context, req datasource.Schema
 						"switchport": schema.StringAttribute{
 							Computed: true,
 						},
-						"ips": schema.ListNestedAttribute{
+						"encapsulation": schema.StringAttribute{
 							Computed: true,
-							NestedObject: schema.NestedAttributeObject{
-								Attributes: map[string]schema.Attribute{
-									"ip": schema.StringAttribute{
-										Computed: true,
-									},
-									"mask": schema.StringAttribute{
-										Computed: true,
-									},
-								},
-							},
+							Optional: true,
+						},
+						"allowed_vlans": schema.ListAttribute{
+							Computed:    true,
+							Optional:    true,
+							ElementType: types.Int32Type,
+						},
+						"spanning_tree_portfast": schema.StringAttribute{
+							Computed: true,
+							Optional: true,
+						},
+						"spanning_tree_bpdu_guard": schema.BoolAttribute{
+							Computed: true,
+							Optional: true,
+						},
+						"access_vlan": schema.Int32Attribute{
+							Computed: true,
 						},
 						"description": schema.StringAttribute{
 							Computed: true,
@@ -88,9 +96,8 @@ func (d *InterfacesDataSource) Configure(ctx context.Context, req datasource.Con
 }
 
 func (d *InterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequest, resp *datasource.ReadResponse) {
-	var data models.InterfacesDataSourceModel
+	var data models.InterfacesSwitchesDataSourceModel
 
-	// Read Terraform configuration data into the model
 	resp.Diagnostics.Append(req.Config.Get(ctx, &data)...)
 
 	if resp.Diagnostics.HasError() {
@@ -115,7 +122,7 @@ func (d *InterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 	for _, inter := range runningConfig.Interfaces {
-		data.Interfaces = append(data.Interfaces, models.InterfaceFromCisconf(ctx, &inter))
+		data.Interfaces = append(data.Interfaces, models.InterfaceSwitchFromCisconf(ctx, &inter))
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

@@ -10,7 +10,7 @@ require (
 )
 
 require (
-	github.com/CorentinPtrl/cisconf v0.0.3 // indirect
+	github.com/CorentinPtrl/cisconf v0.0.0 // indirect
 	github.com/Letsu/cgnet v0.0.0-20231030204030-7d1407195322 // indirect
 	github.com/ProtonMail/go-crypto v1.1.3 // indirect
 	github.com/agext/levenshtein v1.2.2 // indirect
@@ -65,3 +65,5 @@ require (
 	google.golang.org/grpc v1.69.4 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
 )
+
+replace github.com/CorentinPtrl/cisconf => /home/corentin/GolandProjects/cisconf

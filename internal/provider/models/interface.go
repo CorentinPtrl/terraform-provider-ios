@@ -4,18 +4,32 @@ import (
 	"context"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
+	"github.com/hashicorp/terraform-plugin-framework/diag"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-framework/types/basetypes"
+	"github.com/hashicorp/terraform-plugin-log/tflog"
 )
 
-type InterfacesDataSourceModel struct {
-	Interfaces []InterfaceModel `tfsdk:"interfaces"`
+type InterfacesSwitchesDataSourceModel struct {
+	Interfaces []InterfaceSwitchModel `tfsdk:"interfaces"`
+}
+
+type InterfaceSwitchModel struct {
+	Switchport            types.String `tfsdk:"switchport"`
+	AccessVlan            types.Int32  `tfsdk:"access_vlan"`
+	Encapsulation         types.String `tfsdk:"encapsulation"`
+	AllowedVlans          types.List   `tfsdk:"allowed_vlans"`
+	SpanningTreePortfast  types.String `tfsdk:"spanning_tree_portfast"`
+	SpanningTreeBpduGuard types.Bool   `tfsdk:"spanning_tree_bpdu_guard"`
+	InterfaceModel
+}
+
+type InterfaceEthernetModel struct {
+	Ips types.List `tfsdk:"ips"`
+	InterfaceModel
 }
 
 type InterfaceModel struct {
 	ID          types.String `tfsdk:"id"`
-	Switchport  types.String `tfsdk:"switchport"`
-	Ips         types.List   `tfsdk:"ips"`
 	Description types.String `tfsdk:"description"`
 	Shutdown    types.Bool   `tfsdk:"shutdown"`
 }
@@ -32,17 +46,7 @@ func (ip IpInterfaceModel) AttributeTypes() map[string]attr.Type {
 	}
 }
 
-func InterfaceFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) InterfaceModel {
-	ips := []types.Object{}
-	for _, ip := range iface.Ips {
-		value := IpInterfaceModel{
-			Ip:   types.StringValue(ip.Ip),
-			Mask: types.StringValue(ip.Subnet),
-		}
-		obj, _ := types.ObjectValueFrom(ctx, value.AttributeTypes(), value)
-		ips = append(ips, obj)
-
-	}
+func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) InterfaceSwitchModel {
 	var switchport types.String
 	if iface.Switchport {
 		if iface.Trunk {
@@ -54,20 +58,32 @@ func InterfaceFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) In
 		switchport = types.StringNull()
 	}
 
-	switchport = types.StringNull()
+	allowedVlans := types.ListNull(types.Int32Type)
+	if iface.Trunk && iface.TrunkAllowedVlan != nil {
+		var err diag.Diagnostics
+		allowedVlans, err = types.ListValueFrom(ctx, types.Int32Type, iface.TrunkAllowedVlan)
+		if err != nil {
+			tflog.Error(ctx, "Failed to convert trunk allowed VLANs to list")
+			return InterfaceSwitchModel{}
+		}
+	}
 
-	listValue, _ := types.ListValueFrom(ctx, types.ObjectType{}.WithAttributeTypes(IpInterfaceModel{}.AttributeTypes()), ips)
-
-	return InterfaceModel{
-		ID:          types.StringValue(iface.Parent.Identifier),
-		Switchport:  switchport,
-		Ips:         listValue,
-		Description: types.StringValue(iface.Description),
-		Shutdown:    types.BoolValue(iface.Shutdown),
+	return InterfaceSwitchModel{
+		Switchport:            switchport,
+		AccessVlan:            types.Int32Value(int32(iface.AccessVlan)),
+		Encapsulation:         types.StringValue(iface.Encapsulation),
+		AllowedVlans:          allowedVlans,
+		SpanningTreePortfast:  types.StringValue(iface.STPPortFast),
+		SpanningTreeBpduGuard: types.BoolValue(iface.STPBpduGuard == "enable"),
+		InterfaceModel: InterfaceModel{
+			ID:          types.StringValue(iface.Parent.Identifier),
+			Description: types.StringValue(iface.Description),
+			Shutdown:    types.BoolValue(iface.Shutdown),
+		},
 	}
 }
 
-func InterfaceToCisconf(ctx context.Context, iface InterfaceModel) *cisconf.CiscoInterface {
+func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) *cisconf.CiscoInterface {
 	cisIface := &cisconf.CiscoInterface{
 		Parent: cisconf.CiscoInterfaceParent{
 			Identifier: iface.ID.ValueString(),
@@ -80,23 +96,29 @@ func InterfaceToCisconf(ctx context.Context, iface InterfaceModel) *cisconf.Cisc
 		cisIface.Switchport = false
 	} else if iface.Switchport.Equal(types.StringValue("trunk")) {
 		cisIface.Switchport = true
+		cisIface.Access = false
 		cisIface.Trunk = true
+		cisIface.Encapsulation = iface.Encapsulation.ValueString()
+		allowedVlans := make([]types.Int32, 0, len(iface.AllowedVlans.Elements()))
+		diags := iface.AllowedVlans.ElementsAs(ctx, &allowedVlans, false)
+		if diags.HasError() {
+			return nil
+		}
+		cisIface.TrunkAllowedVlan = []int{}
+		for _, vlan := range allowedVlans {
+			cisIface.TrunkAllowedVlan = append(cisIface.TrunkAllowedVlan, int(vlan.ValueInt32()))
+		}
 	} else {
 		cisIface.Switchport = true
-	}
-	cisIface.Switchport = false
-	ips := make([]types.Object, 0, len(iface.Ips.Elements()))
-	diags := iface.Ips.ElementsAs(ctx, &ips, false)
-	if diags.HasError() {
-		return nil
-	}
-	for _, ip := range ips {
-		var cisIp IpInterfaceModel
-		ip.As(ctx, &cisIp, basetypes.ObjectAsOptions{})
-		cisIface.Ips = append(cisIface.Ips, cisconf.Ip{
-			Ip:     cisIp.Ip.ValueString(),
-			Subnet: cisIp.Mask.ValueString(),
-		})
+		cisIface.Trunk = false
+		cisIface.Access = true
+		cisIface.AccessVlan = int(iface.AccessVlan.ValueInt32())
+		cisIface.STPPortFast = iface.SpanningTreePortfast.ValueString()
+		if iface.SpanningTreeBpduGuard.ValueBool() {
+			cisIface.STPBpduGuard = "enable"
+		} else {
+			cisIface.STPBpduGuard = "disable"
+		}
 	}
 	return cisIface
 }
