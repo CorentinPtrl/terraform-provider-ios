@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/Letsu/cgnet"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -43,25 +44,28 @@ func (d *InterfacesDataSource) Schema(ctx context.Context, req datasource.Schema
 						"switchport": schema.StringAttribute{
 							Computed: true,
 						},
-						"encapsulation": schema.StringAttribute{
+						"spanning_tree": schema.ObjectAttribute{
+							AttributeTypes: map[string]attr.Type{
+								"portfast":   types.StringType,
+								"bpdu_guard": types.BoolType,
+							},
 							Computed: true,
 							Optional: true,
 						},
-						"allowed_vlans": schema.ListAttribute{
-							Computed:    true,
-							Optional:    true,
-							ElementType: types.Int32Type,
-						},
-						"spanning_tree_portfast": schema.StringAttribute{
+						"trunk": schema.ObjectAttribute{
+							AttributeTypes: map[string]attr.Type{
+								"encapsulation": types.StringType,
+								"allowed_vlans": types.ListType{}.WithElementType(types.Int32Type),
+							},
 							Computed: true,
 							Optional: true,
 						},
-						"spanning_tree_bpdu_guard": schema.BoolAttribute{
+						"access": schema.ObjectAttribute{
+							AttributeTypes: map[string]attr.Type{
+								"access_vlan": types.Int32Type,
+							},
 							Computed: true,
 							Optional: true,
-						},
-						"access_vlan": schema.Int32Attribute{
-							Computed: true,
 						},
 						"description": schema.StringAttribute{
 							Computed: true,

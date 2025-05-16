@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/Letsu/cgnet"
+	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -42,25 +43,24 @@ func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaReque
 				Computed: true,
 				Optional: true,
 			},
-			"encapsulation": schema.StringAttribute{
-				Computed: true,
+			"trunk": schema.ObjectAttribute{
+				AttributeTypes: map[string]attr.Type{
+					"encapsulation": types.StringType,
+					"allowed_vlans": types.ListType{}.WithElementType(types.Int32Type),
+				},
 				Optional: true,
 			},
-			"access_vlan": schema.Int32Attribute{
-				Optional: true,
-				Computed: true,
-			},
-			"allowed_vlans": schema.ListAttribute{
-				Computed:    true,
-				Optional:    true,
-				ElementType: types.Int32Type,
-			},
-			"spanning_tree_portfast": schema.StringAttribute{
-				Computed: true,
+			"access": schema.ObjectAttribute{
+				AttributeTypes: map[string]attr.Type{
+					"access_vlan": types.Int32Type,
+				},
 				Optional: true,
 			},
-			"spanning_tree_bpdu_guard": schema.BoolAttribute{
-				Computed: true,
+			"spanning_tree": schema.ObjectAttribute{
+				AttributeTypes: map[string]attr.Type{
+					"portfast":   types.StringType,
+					"bpdu_guard": types.BoolType,
+				},
 				Optional: true,
 			},
 			"description": schema.StringAttribute{
