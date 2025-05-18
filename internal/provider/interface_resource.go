@@ -8,9 +8,12 @@ import (
 	"fmt"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/Letsu/cgnet"
-	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strings"
@@ -32,6 +35,14 @@ func (r *InterfaceResource) Metadata(ctx context.Context, req resource.MetadataR
 }
 
 func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	st_obj, diags := types.ObjectValue(models.DefaultSpanningTree.AttributeTypes(), models.DefaultSpanningTree.AttributeValues())
+	if diags.HasError() {
+		resp.Diagnostics.AddError(
+			"Failed to create default spanning tree object",
+			fmt.Sprintf("Unable to create default spanning tree object: %s", diags),
+		)
+		return
+	}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Switch Interface resource",
 
@@ -43,25 +54,54 @@ func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaReque
 				Computed: true,
 				Optional: true,
 			},
-			"trunk": schema.ObjectAttribute{
-				AttributeTypes: map[string]attr.Type{
-					"encapsulation": types.StringType,
-					"allowed_vlans": types.ListType{}.WithElementType(types.Int32Type),
+			"trunk": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"encapsulation": schema.StringAttribute{
+						MarkdownDescription: "Encapsulation type",
+						Optional:            true,
+						Computed:            true,
+						Default:             stringdefault.StaticString("dot1q"),
+					},
+					"allowed_vlans": schema.ListAttribute{
+						MarkdownDescription: "Allowed VLANs",
+						ElementType:         types.Int32Type,
+						Optional:            true,
+						Computed:            true,
+						Default:             listdefault.StaticValue(types.ListNull(types.Int32Type)),
+					},
 				},
-				Optional: true,
+				MarkdownDescription: "Trunk configuration",
+				Optional:            true,
+				Computed:            true,
+				Default:             objectdefault.StaticValue(types.ObjectNull(models.Trunk{}.AttributeTypes())),
 			},
-			"access": schema.ObjectAttribute{
-				AttributeTypes: map[string]attr.Type{
-					"access_vlan": types.Int32Type,
+			"access": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"access_vlan": schema.Int32Attribute{
+						MarkdownDescription: "Access VLAN",
+						Optional:            true,
+						Computed:            true,
+						Default:             int32default.StaticInt32(1),
+					},
 				},
 				Optional: true,
+				Computed: true,
+				Default:  objectdefault.StaticValue(types.ObjectNull(models.Access{}.AttributeTypes())),
 			},
-			"spanning_tree": schema.ObjectAttribute{
-				AttributeTypes: map[string]attr.Type{
-					"portfast":   types.StringType,
-					"bpdu_guard": types.BoolType,
+			"spanning_tree": schema.SingleNestedAttribute{
+				Attributes: map[string]schema.Attribute{
+					"portfast": schema.StringAttribute{
+						Optional: true,
+						Computed: true,
+						Default:  stringdefault.StaticString(""),
+					},
+					"bpdu_guard": schema.BoolAttribute{
+						Optional: true,
+					},
 				},
 				Optional: true,
+				Computed: true,
+				Default:  objectdefault.StaticValue(st_obj),
 			},
 			"description": schema.StringAttribute{
 				Computed: true,
@@ -142,6 +182,7 @@ func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateReque
 		}
 		configs = append(configs, cmd)
 	}
+	tflog.Info(ctx, marshal)
 	err = r.client.Configure(configs)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -269,8 +310,8 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		configs = append(configs, line)
 	}
 	tflog.Info(ctx, marshal)
-	tflog.Info(ctx, fmt.Sprintf("%+v\n", inter))
-	tflog.Info(ctx, fmt.Sprintf("%+v\n", *models.InterfaceSwitchToCisconf(ctx, data)))
+	tflog.Info(ctx, fmt.Sprintf("Src:\n\n %+v\n\n", inter))
+	tflog.Info(ctx, fmt.Sprintf("Dest:\n\n %+v\n\n", *models.InterfaceSwitchToCisconf(ctx, data)))
 	err = r.client.Configure(configs)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -311,7 +352,7 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 }
 
 func (r *InterfaceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data models.InterfaceModel
+	var data models.InterfaceSwitchModel
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 

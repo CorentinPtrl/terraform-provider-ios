@@ -36,6 +36,11 @@ type SpanningTree struct {
 	BpduGuard types.Bool   `tfsdk:"bpdu_guard"`
 }
 
+var DefaultSpanningTree = SpanningTree{
+	Portfast:  types.StringValue(""),
+	BpduGuard: types.BoolNull(),
+}
+
 type InterfaceEthernetModel struct {
 	Ips types.List `tfsdk:"ips"`
 	InterfaceModel
@@ -140,7 +145,6 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 	} else {
 		switchport = types.StringNull()
 	}
-
 	allowedVlans := types.ListNull(types.Int32Type)
 	if iface.Trunk && iface.TrunkAllowedVlan != nil {
 		var err diag.Diagnostics
@@ -151,8 +155,14 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 		}
 	}
 	st := SpanningTree{
-		Portfast:  types.StringValue(iface.STPPortFast),
-		BpduGuard: types.BoolValue(iface.STPBpduGuard == "enable"),
+		Portfast: types.StringValue(iface.STPPortFast),
+	}
+	if iface.STPBpduGuard == "" {
+		st.BpduGuard = types.BoolNull()
+	} else if iface.STPBpduGuard == "enable" {
+		st.BpduGuard = types.BoolValue(true)
+	} else {
+		st.BpduGuard = types.BoolValue(false)
 	}
 	st_obj, diags := types.ObjectValue(st.AttributeTypes(), st.AttributeValues())
 	if diags.HasError() {
@@ -175,7 +185,6 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 
 	trunk_obj := types.ObjectNull(Trunk{}.AttributeTypes())
 	if iface.Trunk {
-
 		trunk := Trunk{
 			Encapsulation: types.StringValue(iface.Encapsulation),
 			AllowedVlans:  allowedVlans,
@@ -241,14 +250,16 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) *
 		}
 		cisIface.AccessVlan = int(access.AccessVlan.ValueInt32())
 	}
-	if iface.SpanningTree.IsUnknown() {
+	if !(iface.SpanningTree.IsUnknown() || iface.SpanningTree.IsNull()) {
 		st, err := SpanningTreeFromObjectValue(ctx, iface.SpanningTree)
 		if err != nil {
 			tflog.Error(ctx, "Failed to convert SpanningTree from ObjectValue")
 			return nil
 		}
 		cisIface.STPPortFast = st.Portfast.ValueString()
-		if st.BpduGuard.ValueBool() {
+		if st.BpduGuard.IsNull() {
+			cisIface.STPBpduGuard = ""
+		} else if st.BpduGuard.ValueBool() {
 			cisIface.STPBpduGuard = "enable"
 		} else {
 			cisIface.STPBpduGuard = "disable"
