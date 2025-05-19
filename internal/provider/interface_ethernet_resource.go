@@ -10,9 +10,8 @@ import (
 	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32default"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
@@ -20,29 +19,21 @@ import (
 	"terraform-provider-ios/internal/provider/models"
 )
 
-var _ resource.Resource = &InterfaceResource{}
+var _ resource.Resource = &InterfaceEthernetResource{}
 
-func NewInterfaceResource() resource.Resource {
-	return &InterfaceResource{}
+func NewInterfaceEthernetResource() resource.Resource {
+	return &InterfaceEthernetResource{}
 }
 
-type InterfaceResource struct {
+type InterfaceEthernetResource struct {
 	client *cgnet.Device
 }
 
-func (r *InterfaceResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_switch_interface"
+func (r *InterfaceEthernetResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_ethernet_interface"
 }
 
-func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
-	st_obj, diags := types.ObjectValue(models.DefaultSpanningTree.AttributeTypes(), models.DefaultSpanningTree.AttributeValues())
-	if diags.HasError() {
-		resp.Diagnostics.AddError(
-			"Failed to create default spanning tree object",
-			fmt.Sprintf("Unable to create default spanning tree object: %s", diags),
-		)
-		return
-	}
+func (r *InterfaceEthernetResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Switch Interface resource",
 
@@ -50,72 +41,41 @@ func (r *InterfaceResource) Schema(ctx context.Context, req resource.SchemaReque
 			"id": schema.StringAttribute{
 				Required: true,
 			},
-			"switchport": schema.StringAttribute{
+			"ips": schema.ListNestedAttribute{
 				Computed: true,
 				Optional: true,
-			},
-			"trunk": schema.SingleNestedAttribute{
-				Attributes: map[string]schema.Attribute{
-					"encapsulation": schema.StringAttribute{
-						MarkdownDescription: "Encapsulation type",
-						Optional:            true,
-						Computed:            true,
-						Default:             stringdefault.StaticString("dot1q"),
-					},
-					"allowed_vlans": schema.ListAttribute{
-						MarkdownDescription: "Allowed VLANs",
-						ElementType:         types.Int32Type,
-						Optional:            true,
-						Computed:            true,
-						Default:             listdefault.StaticValue(types.ListNull(types.Int32Type)),
+				NestedObject: schema.NestedAttributeObject{
+					Attributes: map[string]schema.Attribute{
+						"ip": schema.StringAttribute{
+							Required: true,
+						},
+						"mask": schema.StringAttribute{
+							Required: true,
+						},
 					},
 				},
-				MarkdownDescription: "Trunk configuration",
-				Optional:            true,
-				Computed:            true,
-				Default:             objectdefault.StaticValue(types.ObjectNull(models.Trunk{}.AttributeTypes())),
 			},
-			"access": schema.SingleNestedAttribute{
-				Attributes: map[string]schema.Attribute{
-					"access_vlan": schema.Int32Attribute{
-						MarkdownDescription: "Access VLAN",
-						Optional:            true,
-						Computed:            true,
-						Default:             int32default.StaticInt32(1),
-					},
-				},
-				Optional: true,
-				Computed: true,
-				Default:  objectdefault.StaticValue(types.ObjectNull(models.Access{}.AttributeTypes())),
-			},
-			"spanning_tree": schema.SingleNestedAttribute{
-				Attributes: map[string]schema.Attribute{
-					"portfast": schema.StringAttribute{
-						Optional: true,
-						Computed: true,
-						Default:  stringdefault.StaticString(""),
-					},
-					"bpdu_guard": schema.BoolAttribute{
-						Optional: true,
-					},
-				},
-				Optional: true,
-				Computed: true,
-				Default:  objectdefault.StaticValue(st_obj),
+			"helper_addresses": schema.ListAttribute{
+				Computed:    true,
+				Optional:    true,
+				ElementType: types.StringType,
+				Default:     listdefault.StaticValue(types.ListNull(types.StringType)),
 			},
 			"description": schema.StringAttribute{
 				Computed: true,
 				Optional: true,
+				Default:  stringdefault.StaticString(""),
 			},
 			"shutdown": schema.BoolAttribute{
 				Computed: true,
 				Optional: true,
+				Default:  booldefault.StaticBool(false),
 			},
 		},
 	}
 }
 
-func (r *InterfaceResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *InterfaceEthernetResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -134,8 +94,8 @@ func (r *InterfaceResource) Configure(ctx context.Context, req resource.Configur
 	r.client = client
 }
 
-func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data models.InterfaceSwitchModel
+func (r *InterfaceEthernetResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data models.InterfaceEthernetModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
@@ -169,7 +129,7 @@ func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceSwitchToCisconf(ctx, data))
+	marshal, err := cisconf.Diff(inter, *models.InterfaceEthernetToCisconf(ctx, data))
 	if err != nil {
 		return
 	}
@@ -217,13 +177,13 @@ func (r *InterfaceResource) Create(ctx context.Context, req resource.CreateReque
 		}
 	}
 
-	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	data = models.InterfaceEthernetFromCisconf(ctx, &inter)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *InterfaceResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data models.InterfaceSwitchModel
+func (r *InterfaceEthernetResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data models.InterfaceEthernetModel
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
@@ -257,13 +217,13 @@ func (r *InterfaceResource) Read(ctx context.Context, req resource.ReadRequest, 
 		}
 	}
 
-	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	data = models.InterfaceEthernetFromCisconf(ctx, &inter)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data models.InterfaceSwitchModel
+func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var data models.InterfaceEthernetModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
@@ -296,7 +256,7 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceSwitchToCisconf(ctx, data))
+	marshal, err := cisconf.Diff(inter, *models.InterfaceEthernetToCisconf(ctx, data))
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to diff interface",
@@ -311,7 +271,7 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 	}
 	tflog.Info(ctx, marshal)
 	tflog.Info(ctx, fmt.Sprintf("Src:\n\n %+v\n\n", inter))
-	tflog.Info(ctx, fmt.Sprintf("Dest:\n\n %+v\n\n", *models.InterfaceSwitchToCisconf(ctx, data)))
+	tflog.Info(ctx, fmt.Sprintf("Dest:\n\n %+v\n\n", *models.InterfaceEthernetToCisconf(ctx, data)))
 	err = r.client.Configure(configs)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -346,13 +306,13 @@ func (r *InterfaceResource) Update(ctx context.Context, req resource.UpdateReque
 		}
 	}
 
-	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	data = models.InterfaceEthernetFromCisconf(ctx, &inter)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *InterfaceResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data models.InterfaceSwitchModel
+func (r *InterfaceEthernetResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data models.InterfaceEthernetModel
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 

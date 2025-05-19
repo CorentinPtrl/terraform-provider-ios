@@ -174,7 +174,8 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 func (p *CiscoIosProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewExampleResource,
-		NewInterfaceResource,
+		NewInterfaceSwitchResource,
+		NewInterfaceEthernetResource,
 	}
 }
 
