@@ -8,6 +8,8 @@ import (
 	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/path"
 	"os"
+	"strings"
+	"terraform-provider-ios/internal/provider/ntc"
 
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
@@ -186,11 +188,25 @@ func (p *CiscoIosProvider) EphemeralResources(ctx context.Context) []func() ephe
 }
 
 func (p *CiscoIosProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
-	return []func() datasource.DataSource{
+	datasources := []func() datasource.DataSource{
 		NewExampleDataSource,
 		NewVlansDataSource,
 		NewInterfacesDataSource,
 	}
+	temps, err := ntc.GetTemplateNames()
+	if err != nil {
+		panic(err)
+	}
+	for _, template := range temps {
+		textfsm, err := ntc.GetTextFSM(template)
+		if err != nil {
+			continue
+		}
+		datasources = append(datasources, func() datasource.DataSource {
+			return NewNtcDataSource(strings.ReplaceAll(strings.ReplaceAll(template, ".textfsm", ""), "cisco_ios_", ""), textfsm)
+		})
+	}
+	return datasources
 }
 
 func (p *CiscoIosProvider) Functions(ctx context.Context) []func() function.Function {

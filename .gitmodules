@@ -1,0 +1,3 @@
+[submodule "internal/provider/ntc/ntc-templates"]
+	path = internal/provider/ntc/ntc-templates
+	url = git@github.com:networktocode/ntc-templates.git
