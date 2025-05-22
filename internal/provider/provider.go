@@ -1,5 +1,5 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Corentin Pitrel
+// SPDX-License-Identifier: MIT
 
 package provider
 
@@ -176,6 +176,7 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 func (p *CiscoIosProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
 		NewExampleResource,
+		NewVlanResource,
 		NewInterfaceSwitchResource,
 		NewInterfaceEthernetResource,
 	}

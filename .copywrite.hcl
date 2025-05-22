@@ -1,9 +1,9 @@
-# NOTE: This file is for HashiCorp specific licensing automation and can be deleted after creating a new repo with this template.
 schema_version = 1
 
 project {
-  license        = "MPL-2.0"
-  copyright_year = 2021
+  license        = "MIT"
+  copyright_holder = "Corentin Pitrel"
+  copyright_year = 2025
 
   header_ignore = [
     # examples used within documentation (prose)
@@ -17,5 +17,6 @@ project {
 
     # GoReleaser tooling configuration
     ".goreleaser.yml",
+    "internal/provider/ntc/ntc-templates/**",
   ]
 }

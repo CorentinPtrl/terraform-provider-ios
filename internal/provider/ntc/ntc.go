@@ -1,5 +1,5 @@
-// Copyright (c) HashiCorp, Inc.
-// SPDX-License-Identifier: MPL-2.0
+// Copyright (c) Corentin Pitrel
+// SPDX-License-Identifier: MIT
 
 package ntc
 

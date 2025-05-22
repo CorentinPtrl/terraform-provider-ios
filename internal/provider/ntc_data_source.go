@@ -1,3 +1,6 @@
+// Copyright (c) Corentin Pitrel
+// SPDX-License-Identifier: MIT
+
 package provider
 
 import (
