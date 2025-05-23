@@ -3,12 +3,12 @@
 page_title: "ios_show_crypto_session_detail Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show crypto session detail
 ---
 
 # ios_show_crypto_session_detail (Data Source)
 
-Interfaces data source
+Data source for show crypto session detail
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_crypto_session_detail (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show crypto session detail (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

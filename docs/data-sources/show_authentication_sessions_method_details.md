@@ -3,12 +3,12 @@
 page_title: "ios_show_authentication_sessions_method_details Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show authentication sessions method details
 ---
 
 # ios_show_authentication_sessions_method_details (Data Source)
 
-Interfaces data source
+Data source for show authentication sessions method details
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_authentication_sessions_method_details (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show authentication sessions method details (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

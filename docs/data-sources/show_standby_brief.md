@@ -3,12 +3,12 @@
 page_title: "ios_show_standby_brief Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show standby brief
 ---
 
 # ios_show_standby_brief (Data Source)
 
-Interfaces data source
+Data source for show standby brief
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_standby_brief (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show standby brief (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

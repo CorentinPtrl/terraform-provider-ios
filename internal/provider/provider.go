@@ -175,24 +175,23 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 
 func (p *CiscoIosProvider) Resources(ctx context.Context) []func() resource.Resource {
 	return []func() resource.Resource{
-		NewExampleResource,
 		NewVlanResource,
 		NewInterfaceSwitchResource,
 		NewInterfaceEthernetResource,
+		NewStaticRouteResource,
 	}
 }
 
 func (p *CiscoIosProvider) EphemeralResources(ctx context.Context) []func() ephemeral.EphemeralResource {
-	return []func() ephemeral.EphemeralResource{
-		NewExampleEphemeralResource,
-	}
+	return []func() ephemeral.EphemeralResource{}
 }
 
 func (p *CiscoIosProvider) DataSources(ctx context.Context) []func() datasource.DataSource {
 	datasources := []func() datasource.DataSource{
-		NewExampleDataSource,
+		NewVlanDataSource,
 		NewVlansDataSource,
 		NewInterfacesDataSource,
+		NewStaticRoutesDataSource,
 	}
 	temps, err := ntc.GetTemplateNames()
 	if err != nil {
@@ -211,9 +210,7 @@ func (p *CiscoIosProvider) DataSources(ctx context.Context) []func() datasource.
 }
 
 func (p *CiscoIosProvider) Functions(ctx context.Context) []func() function.Function {
-	return []func() function.Function{
-		NewExampleFunction,
-	}
+	return []func() function.Function{}
 }
 
 func New(version string) func() provider.Provider {

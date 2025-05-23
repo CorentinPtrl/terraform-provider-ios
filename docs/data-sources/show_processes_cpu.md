@@ -3,12 +3,12 @@
 page_title: "ios_show_processes_cpu Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show processes cpu
 ---
 
 # ios_show_processes_cpu (Data Source)
 
-Interfaces data source
+Data source for show processes cpu
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_processes_cpu (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show processes cpu (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

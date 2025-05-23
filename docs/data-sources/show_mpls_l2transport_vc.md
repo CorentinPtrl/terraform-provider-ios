@@ -3,12 +3,12 @@
 page_title: "ios_show_mpls_l2transport_vc Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show mpls l2transport vc
 ---
 
 # ios_show_mpls_l2transport_vc (Data Source)
 
-Interfaces data source
+Data source for show mpls l2transport vc
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_mpls_l2transport_vc (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show mpls l2transport vc (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

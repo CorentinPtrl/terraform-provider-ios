@@ -3,12 +3,12 @@
 page_title: "ios_show_vrrp_all Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show vrrp all
 ---
 
 # ios_show_vrrp_all (Data Source)
 
-Interfaces data source
+Data source for show vrrp all
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_vrrp_all (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show vrrp all (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

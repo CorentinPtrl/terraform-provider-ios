@@ -3,12 +3,12 @@
 page_title: "ios_show_arp Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show arp
 ---
 
 # ios_show_arp (Data Source)
 
-Interfaces data source
+Data source for show arp
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_arp (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show arp (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

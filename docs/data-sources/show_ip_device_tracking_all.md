@@ -3,12 +3,12 @@
 page_title: "ios_show_ip_device_tracking_all Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show ip device tracking all
 ---
 
 # ios_show_ip_device_tracking_all (Data Source)
 
-Interfaces data source
+Data source for show ip device tracking all
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_ip_device_tracking_all (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show ip device tracking all (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

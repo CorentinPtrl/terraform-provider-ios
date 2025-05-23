@@ -3,12 +3,12 @@
 page_title: "ios_show_nve_peers Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show nve peers
 ---
 
 # ios_show_nve_peers (Data Source)
 
-Interfaces data source
+Data source for show nve peers
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_nve_peers (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show nve peers (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

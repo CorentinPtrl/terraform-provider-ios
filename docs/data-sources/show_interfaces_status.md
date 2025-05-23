@@ -3,12 +3,12 @@
 page_title: "ios_show_interfaces_status Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show interfaces status
 ---
 
 # ios_show_interfaces_status (Data Source)
 
-Interfaces data source
+Data source for show interfaces status
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_interfaces_status (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show interfaces status (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

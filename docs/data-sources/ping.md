@@ -3,12 +3,12 @@
 page_title: "ios_ping Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for ping
 ---
 
 # ios_ping (Data Source)
 
-Interfaces data source
+Data source for ping
 
 
 

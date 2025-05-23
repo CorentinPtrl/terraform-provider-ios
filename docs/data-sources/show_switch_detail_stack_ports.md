@@ -3,12 +3,12 @@
 page_title: "ios_show_switch_detail_stack_ports Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show switch detail stack ports
 ---
 
 # ios_show_switch_detail_stack_ports (Data Source)
 
-Interfaces data source
+Data source for show switch detail stack ports
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_switch_detail_stack_ports (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show switch detail stack ports (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

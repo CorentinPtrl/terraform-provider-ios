@@ -3,12 +3,12 @@
 page_title: "ios_show_ip_dhcp_snooping_binding Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show ip dhcp snooping binding
 ---
 
 # ios_show_ip_dhcp_snooping_binding (Data Source)
 
-Interfaces data source
+Data source for show ip dhcp snooping binding
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_ip_dhcp_snooping_binding (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show ip dhcp snooping binding (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

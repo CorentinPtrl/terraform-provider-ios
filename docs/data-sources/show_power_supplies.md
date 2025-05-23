@@ -3,12 +3,12 @@
 page_title: "ios_show_power_supplies Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show power supplies
 ---
 
 # ios_show_power_supplies (Data Source)
 
-Interfaces data source
+Data source for show power supplies
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_power_supplies (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show power supplies (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

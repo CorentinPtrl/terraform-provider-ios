@@ -3,12 +3,12 @@
 page_title: "ios_show_ip_bgp_neighbors Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show ip bgp neighbors
 ---
 
 # ios_show_ip_bgp_neighbors (Data Source)
 
-Interfaces data source
+Data source for show ip bgp neighbors
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_ip_bgp_neighbors (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show ip bgp neighbors (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

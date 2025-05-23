@@ -3,12 +3,12 @@
 page_title: "ios_show_ap_summary Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show ap summary
 ---
 
 # ios_show_ap_summary (Data Source)
 
-Interfaces data source
+Data source for show ap summary
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_ap_summary (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show ap summary (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

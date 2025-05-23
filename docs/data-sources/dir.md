@@ -3,12 +3,12 @@
 page_title: "ios_dir Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for dir
 ---
 
 # ios_dir (Data Source)
 
-Interfaces data source
+Data source for dir
 
 
 

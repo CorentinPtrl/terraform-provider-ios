@@ -3,12 +3,12 @@
 page_title: "ios_show_vlan Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show vlan
 ---
 
 # ios_show_vlan (Data Source)
 
-Interfaces data source
+Data source for show vlan
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_vlan (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show vlan (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

@@ -3,12 +3,12 @@
 page_title: "ios_show_port-security_interface_interface Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show port-security interface interface
 ---
 
 # ios_show_port-security_interface_interface (Data Source)
 
-Interfaces data source
+Data source for show port-security interface interface
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_port-security_interface_interface (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show port-security interface interface (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

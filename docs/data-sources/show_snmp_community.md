@@ -3,12 +3,12 @@
 page_title: "ios_show_snmp_community Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show snmp community
 ---
 
 # ios_show_snmp_community (Data Source)
 
-Interfaces data source
+Data source for show snmp community
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_snmp_community (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show snmp community (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

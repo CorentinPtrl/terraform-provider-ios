@@ -3,12 +3,12 @@
 page_title: "ios_show_interfaces_switchport Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show interfaces switchport
 ---
 
 # ios_show_interfaces_switchport (Data Source)
 
-Interfaces data source
+Data source for show interfaces switchport
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_interfaces_switchport (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show interfaces switchport (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

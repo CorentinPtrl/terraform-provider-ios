@@ -3,12 +3,12 @@
 page_title: "ios_show_access-session Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show access-session
 ---
 
 # ios_show_access-session (Data Source)
 
-Interfaces data source
+Data source for show access-session
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_access-session (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show access-session (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

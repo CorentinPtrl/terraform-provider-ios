@@ -3,12 +3,12 @@
 page_title: "ios_show_mac-address-table Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show mac-address-table
 ---
 
 # ios_show_mac-address-table (Data Source)
 
-Interfaces data source
+Data source for show mac-address-table
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_mac-address-table (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show mac-address-table (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

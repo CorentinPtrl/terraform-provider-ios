@@ -54,12 +54,12 @@ func (d *NtcDataSource) Schema(ctx context.Context, req datasource.SchemaRequest
 		}
 	}
 	resp.Schema = schema.Schema{
-		MarkdownDescription: "Interfaces data source",
+		MarkdownDescription: "Data source for " + strings.ReplaceAll(d.name, "_", " "),
 
 		Attributes: map[string]schema.Attribute{
 			"data": schema.ListNestedAttribute{
 				Computed:    true,
-				Description: "Data source for " + d.name,
+				Description: "Data source for " + strings.ReplaceAll(d.name, "_", " "),
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: fsmValues,
 				},

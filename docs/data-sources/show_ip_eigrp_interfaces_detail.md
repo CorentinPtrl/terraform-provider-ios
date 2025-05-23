@@ -3,12 +3,12 @@
 page_title: "ios_show_ip_eigrp_interfaces_detail Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show ip eigrp interfaces detail
 ---
 
 # ios_show_ip_eigrp_interfaces_detail (Data Source)
 
-Interfaces data source
+Data source for show ip eigrp interfaces detail
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_ip_eigrp_interfaces_detail (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show ip eigrp interfaces detail (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

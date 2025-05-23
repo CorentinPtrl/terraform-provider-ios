@@ -3,12 +3,12 @@
 page_title: "ios_show_nve_vni Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show nve vni
 ---
 
 # ios_show_nve_vni (Data Source)
 
-Interfaces data source
+Data source for show nve vni
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_nve_vni (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show nve vni (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

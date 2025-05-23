@@ -3,12 +3,12 @@
 page_title: "ios_show_ipv6_neighbors Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show ipv6 neighbors
 ---
 
 # ios_show_ipv6_neighbors (Data Source)
 
-Interfaces data source
+Data source for show ipv6 neighbors
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_ipv6_neighbors (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show ipv6 neighbors (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

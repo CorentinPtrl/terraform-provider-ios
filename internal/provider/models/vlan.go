@@ -14,6 +14,10 @@ type VlanModel struct {
 	Name types.String `tfsdk:"name"`
 }
 
+type VlansDataSourceModel struct {
+	Vlans []VlanModel `tfsdk:"vlans"`
+}
+
 func VlanToCisconf(ctx context.Context, data VlanModel) cisconf.Vlan {
 	return cisconf.Vlan{
 		Id:   int(data.Id.ValueInt32()),

@@ -3,12 +3,12 @@
 page_title: "ios_show_cdp_neighbors_detail Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show cdp neighbors detail
 ---
 
 # ios_show_cdp_neighbors_detail (Data Source)
 
-Interfaces data source
+Data source for show cdp neighbors detail
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_cdp_neighbors_detail (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show cdp neighbors detail (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

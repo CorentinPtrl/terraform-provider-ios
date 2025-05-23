@@ -3,12 +3,12 @@
 page_title: "ios_show_power_inline Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show power inline
 ---
 
 # ios_show_power_inline (Data Source)
 
-Interfaces data source
+Data source for show power inline
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_power_inline (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show power inline (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

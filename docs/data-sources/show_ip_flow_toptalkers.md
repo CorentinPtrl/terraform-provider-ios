@@ -3,12 +3,12 @@
 page_title: "ios_show_ip_flow_toptalkers Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show ip flow toptalkers
 ---
 
 # ios_show_ip_flow_toptalkers (Data Source)
 
-Interfaces data source
+Data source for show ip flow toptalkers
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_ip_flow_toptalkers (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show ip flow toptalkers (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

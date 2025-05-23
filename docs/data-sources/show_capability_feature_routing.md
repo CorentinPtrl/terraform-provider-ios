@@ -3,12 +3,12 @@
 page_title: "ios_show_capability_feature_routing Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show capability feature routing
 ---
 
 # ios_show_capability_feature_routing (Data Source)
 
-Interfaces data source
+Data source for show capability feature routing
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_capability_feature_routing (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show capability feature routing (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`

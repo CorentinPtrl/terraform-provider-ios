@@ -3,12 +3,12 @@
 page_title: "ios_show_redundancy Data Source - ios"
 subcategory: ""
 description: |-
-  Interfaces data source
+  Data source for show redundancy
 ---
 
 # ios_show_redundancy (Data Source)
 
-Interfaces data source
+Data source for show redundancy
 
 
 
@@ -17,7 +17,7 @@ Interfaces data source
 
 ### Read-Only
 
-- `data` (Attributes List) Data source for show_redundancy (see [below for nested schema](#nestedatt--data))
+- `data` (Attributes List) Data source for show redundancy (see [below for nested schema](#nestedatt--data))
 
 <a id="nestedatt--data"></a>
 ### Nested Schema for `data`
