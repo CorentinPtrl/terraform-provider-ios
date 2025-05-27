@@ -29,9 +29,16 @@ data "ios_static_routes" "test" {
 }
 
 resource "ios_static_route" "test" {
-  prefix = "192.168.51.0"
-  mask   = "255.255.255.0"
+  prefix   = "192.168.51.0"
+  mask     = "255.255.255.0"
   next_hop = "1.1.1.1"
+}
+
+resource "ios_eigrp" "test" {
+  as_number = 5
+    networks  = [
+    "192.168.80.0/24",
+    ]
 }
 
 output "vlans" {

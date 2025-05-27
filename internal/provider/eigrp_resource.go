@@ -10,52 +10,51 @@ import (
 	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
+	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"strings"
 	"terraform-provider-ios/internal/provider/models"
 )
 
-var _ resource.Resource = &StaticRouteResource{}
+var _ resource.Resource = &EigrpResource{}
 
-func NewStaticRouteResource() resource.Resource {
-	return &StaticRouteResource{}
+func NewEigrpResource() resource.Resource {
+	return &EigrpResource{}
 }
 
-type StaticRouteResource struct {
+type EigrpResource struct {
 	client *cgnet.Device
 }
 
-func (r *StaticRouteResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
-	resp.TypeName = req.ProviderTypeName + "_static_route"
+func (r *EigrpResource) Metadata(ctx context.Context, req resource.MetadataRequest, resp *resource.MetadataResponse) {
+	resp.TypeName = req.ProviderTypeName + "_eigrp"
 }
 
-func (r *StaticRouteResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+func (r *EigrpResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Static Route resource",
 
 		Attributes: map[string]schema.Attribute{
-			"prefix": schema.StringAttribute{
-				Required: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
-				},
+			"networks": schema.ListAttribute{
+				Optional:    true,
+				Computed:    true,
+				ElementType: types.StringType,
+				Default:     listdefault.StaticValue(types.ListNull(types.StringType)),
 			},
-			"mask": schema.StringAttribute{
+			"as_number": schema.Int64Attribute{
 				Required: true,
-				PlanModifiers: []planmodifier.String{
-					stringplanmodifier.RequiresReplace(),
+				PlanModifiers: []planmodifier.Int64{
+					int64planmodifier.RequiresReplace(),
 				},
-			},
-			"next_hop": schema.StringAttribute{
-				Required: true,
 			},
 		},
 	}
 }
 
-func (r *StaticRouteResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
+func (r *EigrpResource) Configure(ctx context.Context, req resource.ConfigureRequest, resp *resource.ConfigureResponse) {
 	if req.ProviderData == nil {
 		return
 	}
@@ -74,8 +73,8 @@ func (r *StaticRouteResource) Configure(ctx context.Context, req resource.Config
 	r.client = client
 }
 
-func (r *StaticRouteResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
-	var data models.RouteModel
+func (r *EigrpResource) Create(ctx context.Context, req resource.CreateRequest, resp *resource.CreateResponse) {
+	var data models.EigrpModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
@@ -101,29 +100,20 @@ func (r *StaticRouteResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	var route *cisconf.Route
-	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
-			route = &v
+	var eigrp *cisconf.Eigrp
+	eigrp = nil
+	for _, v := range runningConfig.EIGRPProcess {
+		if v.Asn == int(data.As.ValueInt64()) {
+			eigrp = &v
 			break
 		}
 	}
 
 	var marshal string
-	if route == nil {
-		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
-		}}
-		marshal, err = cisconf.Marshal(dest)
+	if eigrp == nil {
+		marshal, err = cisconf.Marshal(models.EigrpToCisconf(ctx, data))
 	} else {
-		src := cisconf.RoutesType{Routes: []cisconf.Route{
-			*route,
-		}}
-		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
-		}}
-		marshal, err = cisconf.Diff(src, dest)
+		marshal, err = cisconf.Diff(*eigrp, models.EigrpToCisconf(ctx, data))
 	}
 	if err != nil {
 		return
@@ -165,21 +155,21 @@ func (r *StaticRouteResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
-			route = &v
+	eigrp = nil
+	for _, v := range runningConfig.EIGRPProcess {
+		if v.Asn == int(data.As.ValueInt64()) {
+			eigrp = &v
 			break
 		}
 	}
 
-	data = models.RouteFromCisconf(ctx, *route)
-
+	data = models.EigrpFromCisconf(ctx, *eigrp)
+	tflog.Info(ctx, fmt.Sprintf("EIGRP ASN %d created", data.As.ValueInt64()))
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *StaticRouteResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
-	var data models.RouteModel
+func (r *EigrpResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
+	var data models.EigrpModel
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
@@ -205,27 +195,27 @@ func (r *StaticRouteResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	var route *cisconf.Route
-	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
-			route = &v
+	var eigrp *cisconf.Eigrp
+	eigrp = nil
+	for _, v := range runningConfig.EIGRPProcess {
+		if v.Asn == int(data.As.ValueInt64()) {
+			eigrp = &v
 			break
 		}
 	}
 
-	if route == nil {
+	if eigrp == nil {
 		resp.State.RemoveResource(ctx)
 		return
 	}
 
-	data = models.RouteFromCisconf(ctx, *route)
+	data = models.EigrpFromCisconf(ctx, *eigrp)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
-	var data models.RouteModel
+func (r *EigrpResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
+	var data models.EigrpModel
 
 	resp.Diagnostics.Append(req.Plan.Get(ctx, &data)...)
 
@@ -250,29 +240,20 @@ func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	var route *cisconf.Route
-	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
-			route = &v
+	var eigrp *cisconf.Eigrp
+	eigrp = nil
+	for _, v := range runningConfig.EIGRPProcess {
+		if v.Asn == int(data.As.ValueInt64()) {
+			eigrp = &v
 			break
 		}
 	}
 
 	var marshal string
-	if route == nil {
-		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
-		}}
-		marshal, err = cisconf.Marshal(dest)
+	if eigrp == nil {
+		marshal, err = cisconf.Marshal(models.EigrpToCisconf(ctx, data))
 	} else {
-		src := cisconf.RoutesType{Routes: []cisconf.Route{
-			*route,
-		}}
-		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
-		}}
-		marshal, err = cisconf.Diff(src, dest)
+		marshal, err = cisconf.Diff(*eigrp, models.EigrpToCisconf(ctx, data))
 	}
 	if err != nil {
 		return
@@ -314,21 +295,21 @@ func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateReq
 		return
 	}
 
-	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
-			route = &v
+	eigrp = nil
+	for _, v := range runningConfig.EIGRPProcess {
+		if v.Asn == int(data.As.ValueInt64()) {
+			eigrp = &v
 			break
 		}
 	}
 
-	data = models.RouteFromCisconf(ctx, *route)
+	data = models.EigrpFromCisconf(ctx, *eigrp)
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
-func (r *StaticRouteResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
-	var data models.RouteModel
+func (r *EigrpResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
+	var data models.EigrpModel
 
 	resp.Diagnostics.Append(req.State.Get(ctx, &data)...)
 
@@ -336,7 +317,7 @@ func (r *StaticRouteResource) Delete(ctx context.Context, req resource.DeleteReq
 		return
 	}
 
-	err := r.client.Configure([]string{"no ip route " + data.Prefix.ValueString() + " " + data.Mask.ValueString() + " " + data.NextHop.ValueString()})
+	err := r.client.Configure([]string{"no router eigrp " + data.As.String()})
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",

@@ -6,18 +6,17 @@ package provider
 import (
 	"context"
 	"github.com/Letsu/cgnet"
-	"github.com/hashicorp/terraform-plugin-framework/path"
-	"os"
-	"strings"
-	"terraform-provider-ios/internal/provider/ntc"
-
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/function"
+	"github.com/hashicorp/terraform-plugin-framework/path"
 	"github.com/hashicorp/terraform-plugin-framework/provider"
 	"github.com/hashicorp/terraform-plugin-framework/provider/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
+	"os"
+	"strings"
+	"terraform-provider-ios/internal/provider/ntc"
 )
 
 // Ensure CiscoIosProvider satisfies various provider interfaces.
@@ -179,6 +178,7 @@ func (p *CiscoIosProvider) Resources(ctx context.Context) []func() resource.Reso
 		NewInterfaceSwitchResource,
 		NewInterfaceEthernetResource,
 		NewStaticRouteResource,
+		NewEigrpResource,
 	}
 }
 

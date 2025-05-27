@@ -11,7 +11,15 @@ require (
 	github.com/hashicorp/terraform-plugin-testing v1.12.0
 )
 
-require github.com/kr/text v0.2.0 // indirect
+require (
+	github.com/agext/levenshtein v1.2.3 // indirect
+	github.com/bufbuild/protocompile v0.8.0 // indirect
+	github.com/kr/pretty v0.3.1 // indirect
+	github.com/mitchellh/go-wordwrap v1.0.1 // indirect
+	github.com/rogpeppe/go-internal v1.11.0 // indirect
+	github.com/stretchr/testify v1.8.4 // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
+)
 
 require (
 	github.com/CorentinPtrl/cisconf v0.0.0
