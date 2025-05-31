@@ -38,39 +38,45 @@ func (d *InterfacesDataSource) Schema(ctx context.Context, req datasource.Schema
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"id": schema.StringAttribute{
-							Computed: true,
+							Computed:    true,
+							Description: "The unique identifier for the interface, typically in the format 'GigabitEthernet0/1'.",
 						},
 						"switchport": schema.StringAttribute{
-							Computed: true,
+							Computed:    true,
+							Description: "The switchport mode of the interface, such as 'access' or 'trunk'. If not set, the interface is assumed to be in routed mode.",
 						},
 						"spanning_tree": schema.ObjectAttribute{
 							AttributeTypes: map[string]attr.Type{
 								"portfast":   types.StringType,
 								"bpdu_guard": types.BoolType,
 							},
-							Computed: true,
-							Optional: true,
+							Computed:    true,
+							Optional:    true,
+							Description: "Spanning Tree Protocol (STP) settings for the interface. 'portfast' enables PortFast, and 'bpdu_guard' enables BPDU Guard.",
 						},
 						"trunk": schema.ObjectAttribute{
 							AttributeTypes: map[string]attr.Type{
 								"encapsulation": types.StringType,
 								"allowed_vlans": types.ListType{}.WithElementType(types.Int32Type),
 							},
-							Computed: true,
-							Optional: true,
+							Computed:    true,
+							Optional:    true,
+							Description: "Trunk settings for the interface. 'encapsulation' specifies the trunk encapsulation type, and 'allowed_vlans' lists the VLANs allowed on the trunk.",
 						},
 						"access": schema.ObjectAttribute{
 							AttributeTypes: map[string]attr.Type{
 								"access_vlan": types.Int32Type,
 							},
-							Computed: true,
-							Optional: true,
+							Computed:    true,
+							Optional:    true,
+							Description: "Access settings for the interface. 'access_vlan' specifies the VLAN assigned to the access port.",
 						},
 						"description": schema.StringAttribute{
 							Computed: true,
 						},
 						"shutdown": schema.BoolAttribute{
-							Computed: true,
+							Computed:    true,
+							Description: "Indicates whether the interface is administratively shut down. If true, the interface is disabled.",
 						},
 					},
 				},

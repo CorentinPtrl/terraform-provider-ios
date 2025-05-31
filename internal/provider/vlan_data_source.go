@@ -32,7 +32,8 @@ func (d *VlanDataSource) Schema(ctx context.Context, req datasource.SchemaReques
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.Int32Attribute{
-				Required: true,
+				Required:    true,
+				Description: "The VLAN ID to retrieve. This is a required field and must be specified.",
 			},
 			"name": schema.StringAttribute{
 				Computed: true,

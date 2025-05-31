@@ -46,7 +46,8 @@ func (r *InterfaceEthernetResource) Schema(ctx context.Context, req resource.Sch
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Required: true,
+				Required:    true,
+				Description: "The ID of the interface, e.g., 'GigabitEthernet0/1'.",
 			},
 			"ips": schema.ListNestedAttribute{
 				Computed: true,
@@ -58,23 +59,27 @@ func (r *InterfaceEthernetResource) Schema(ctx context.Context, req resource.Sch
 						},
 					},
 				},
-				Default: listdefault.StaticValue(defaultIpList),
+				Default:     listdefault.StaticValue(defaultIpList),
+				Description: "List of IP addresses assigned to the interface. Each IP address must be specified in CIDR notation (e.g., '192.168.10.2/24').",
 			},
 			"helper_addresses": schema.ListAttribute{
 				Computed:    true,
 				Optional:    true,
 				ElementType: types.StringType,
 				Default:     listdefault.StaticValue(types.ListNull(types.StringType)),
+				Description: "List of helper addresses for the interface. These addresses are used for protocols like DHCP and TFTP to forward requests to the appropriate server.",
 			},
 			"description": schema.StringAttribute{
-				Computed: true,
-				Optional: true,
-				Default:  stringdefault.StaticString(""),
+				Computed:    true,
+				Optional:    true,
+				Default:     stringdefault.StaticString(""),
+				Description: "Description of the interface.",
 			},
 			"shutdown": schema.BoolAttribute{
-				Computed: true,
-				Optional: true,
-				Default:  booldefault.StaticBool(false),
+				Computed:    true,
+				Optional:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Indicates whether the interface is administratively shut down. If true, the interface is disabled.",
 			},
 		},
 	}

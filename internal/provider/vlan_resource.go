@@ -40,6 +40,7 @@ func (r *VlanResource) Schema(ctx context.Context, req resource.SchemaRequest, r
 				PlanModifiers: []planmodifier.Int32{
 					int32planmodifier.RequiresReplace(),
 				},
+				Description: "The VLAN ID to configure. This is a required field and must be specified.",
 			},
 			"name": schema.StringAttribute{
 				Required: true,

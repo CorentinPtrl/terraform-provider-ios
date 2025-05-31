@@ -24,16 +24,16 @@ Interfaces data source
 
 Optional:
 
-- `access` (Object) (see [below for nested schema](#nestedatt--interfaces--access))
-- `spanning_tree` (Object) (see [below for nested schema](#nestedatt--interfaces--spanning_tree))
-- `trunk` (Object) (see [below for nested schema](#nestedatt--interfaces--trunk))
+- `access` (Object) Access settings for the interface. 'access_vlan' specifies the VLAN assigned to the access port. (see [below for nested schema](#nestedatt--interfaces--access))
+- `spanning_tree` (Object) Spanning Tree Protocol (STP) settings for the interface. 'portfast' enables PortFast, and 'bpdu_guard' enables BPDU Guard. (see [below for nested schema](#nestedatt--interfaces--spanning_tree))
+- `trunk` (Object) Trunk settings for the interface. 'encapsulation' specifies the trunk encapsulation type, and 'allowed_vlans' lists the VLANs allowed on the trunk. (see [below for nested schema](#nestedatt--interfaces--trunk))
 
 Read-Only:
 
 - `description` (String)
-- `id` (String)
-- `shutdown` (Boolean)
-- `switchport` (String)
+- `id` (String) The unique identifier for the interface, typically in the format 'GigabitEthernet0/1'.
+- `shutdown` (Boolean) Indicates whether the interface is administratively shut down. If true, the interface is disabled.
+- `switchport` (String) The switchport mode of the interface, such as 'access' or 'trunk'. If not set, the interface is assumed to be in routed mode.
 
 <a id="nestedatt--interfaces--access"></a>
 ### Nested Schema for `interfaces.access`

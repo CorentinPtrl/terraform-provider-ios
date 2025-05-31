@@ -40,15 +40,18 @@ func (r *StaticRouteResource) Schema(ctx context.Context, req resource.SchemaReq
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Description: "The destination network prefix for the static route, e.g., '192.168.21.0', without the subnet mask.",
 			},
 			"mask": schema.StringAttribute{
 				Required: true,
 				PlanModifiers: []planmodifier.String{
 					stringplanmodifier.RequiresReplace(),
 				},
+				Description: "The subnet mask for the static route, e.g., '255.255.255.0'. This is required to specify the network size.",
 			},
 			"next_hop": schema.StringAttribute{
-				Required: true,
+				Required:    true,
+				Description: "The next-hop IP address for the static route, e.g., '192.168.20.1'. This is the IP address of the next router to which packets should be forwarded.",
 			},
 		},
 	}

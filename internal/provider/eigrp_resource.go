@@ -42,12 +42,14 @@ func (r *EigrpResource) Schema(ctx context.Context, req resource.SchemaRequest, 
 				Computed:    true,
 				ElementType: types.StringType,
 				Default:     listdefault.StaticValue(types.ListNull(types.StringType)),
+				Description: "List of networks to advertise in EIGRP. If not specified, all connected networks will be advertised.",
 			},
 			"as_number": schema.Int64Attribute{
 				Required: true,
 				PlanModifiers: []planmodifier.Int64{
 					int64planmodifier.RequiresReplace(),
 				},
+				Description: "EIGRP Autonomous System Number (AS Number). This is a required field and must be specified.",
 			},
 		},
 	}

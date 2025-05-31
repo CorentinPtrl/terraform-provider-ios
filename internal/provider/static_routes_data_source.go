@@ -36,13 +36,16 @@ func (d *StaticRoutesDataSource) Schema(ctx context.Context, req datasource.Sche
 				NestedObject: schema.NestedAttributeObject{
 					Attributes: map[string]schema.Attribute{
 						"prefix": schema.StringAttribute{
-							Computed: true,
+							Computed:    true,
+							Description: "The destination network prefix for the static route, e.g., '192.168.21.0', without the subnet mask.",
 						},
 						"mask": schema.StringAttribute{
-							Computed: true,
+							Computed:    true,
+							Description: "The subnet mask for the static route, e.g., '255.255.255.0'. This is required to specify the network size.",
 						},
 						"next_hop": schema.StringAttribute{
-							Computed: true,
+							Computed:    true,
+							Description: "The next-hop IP address for the static route, e.g., '192.168.20.1'. This is the IP address of the next router to which packets should be forwarded.",
 						},
 					},
 				},

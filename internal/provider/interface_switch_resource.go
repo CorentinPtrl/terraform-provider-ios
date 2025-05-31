@@ -48,10 +48,12 @@ func (r *InterfaceSwitchResource) Schema(ctx context.Context, req resource.Schem
 
 		Attributes: map[string]schema.Attribute{
 			"id": schema.StringAttribute{
-				Required: true,
+				Required:    true,
+				Description: "The ID of the interface, e.g., 'GigabitEthernet0/1'.",
 			},
 			"switchport": schema.StringAttribute{
-				Computed: true,
+				Computed:    true,
+				Description: "Switchport mode of the interface. This is automatically set based on the configuration.",
 			},
 			"trunk": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -60,6 +62,7 @@ func (r *InterfaceSwitchResource) Schema(ctx context.Context, req resource.Schem
 						Optional:            true,
 						Computed:            true,
 						Default:             stringdefault.StaticString("dot1q"),
+						Description:         "Encapsulation type for the trunk interface. Default is 'dot1q'.",
 					},
 					"allowed_vlans": schema.ListAttribute{
 						MarkdownDescription: "Allowed VLANs",
@@ -67,12 +70,14 @@ func (r *InterfaceSwitchResource) Schema(ctx context.Context, req resource.Schem
 						Optional:            true,
 						Computed:            true,
 						Default:             listdefault.StaticValue(types.ListNull(types.Int32Type)),
+						Description:         "List of VLANs allowed on the trunk interface. If not specified, all VLANs are allowed.",
 					},
 				},
 				MarkdownDescription: "Trunk configuration",
 				Optional:            true,
 				Computed:            true,
 				Default:             objectdefault.StaticValue(types.ObjectNull(models.Trunk{}.AttributeTypes())),
+				Description:         "Trunk configuration for the interface. If not specified, the interface will not be configured as a trunk.",
 			},
 			"access": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
@@ -81,36 +86,43 @@ func (r *InterfaceSwitchResource) Schema(ctx context.Context, req resource.Schem
 						Optional:            true,
 						Computed:            true,
 						Default:             int32default.StaticInt32(1),
+						Description:         "Access VLAN for the interface. Default is 1. This is used when the interface is configured as an access port.",
 					},
 				},
-				Optional: true,
-				Computed: true,
-				Default:  objectdefault.StaticValue(types.ObjectNull(models.Access{}.AttributeTypes())),
+				Optional:    true,
+				Computed:    true,
+				Default:     objectdefault.StaticValue(types.ObjectNull(models.Access{}.AttributeTypes())),
+				Description: "Access configuration for the interface. If not specified, the interface will not be configured as an access port.",
 			},
 			"spanning_tree": schema.SingleNestedAttribute{
 				Attributes: map[string]schema.Attribute{
 					"portfast": schema.StringAttribute{
-						Optional: true,
-						Computed: true,
-						Default:  stringdefault.StaticString(""),
+						Optional:    true,
+						Computed:    true,
+						Default:     stringdefault.StaticString(""),
+						Description: "Spanning Tree PortFast configuration. Can be 'disable', 'edge', or 'network'. If not specified, PortFast is not configured.",
 					},
 					"bpdu_guard": schema.BoolAttribute{
-						Optional: true,
+						Optional:    true,
+						Description: "Enable or disable BPDU Guard on the interface. If true, BPDU Guard is enabled. If false, it is disabled.",
 					},
 				},
-				Optional: true,
-				Computed: true,
-				Default:  objectdefault.StaticValue(st_obj),
+				Optional:    true,
+				Computed:    true,
+				Default:     objectdefault.StaticValue(st_obj),
+				Description: "Spanning Tree configuration for the interface. If not specified, default spanning tree settings are applied.",
 			},
 			"description": schema.StringAttribute{
-				Computed: true,
-				Optional: true,
-				Default:  stringdefault.StaticString(""),
+				Computed:    true,
+				Optional:    true,
+				Default:     stringdefault.StaticString(""),
+				Description: "Description of the interface. This is used to provide additional information about the interface.",
 			},
 			"shutdown": schema.BoolAttribute{
-				Computed: true,
-				Optional: true,
-				Default:  booldefault.StaticBool(false),
+				Computed:    true,
+				Optional:    true,
+				Default:     booldefault.StaticBool(false),
+				Description: "Indicates whether the interface is administratively shut down. If true, the interface is disabled. If false, the interface is enabled.",
 			},
 		},
 	}
