@@ -6,17 +6,16 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
-	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"strings"
 	"terraform-provider-ios/internal/provider/models"
+	"terraform-provider-ios/internal/utils"
 )
 
 var _ resource.Resource = &InterfaceEthernetResource{}
@@ -109,30 +108,13 @@ func (r *InterfaceEthernetResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	inter, err := models.GetEthernetInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get ethernet interface",
+			fmt.Sprintf("Unable to get ethernet interface: %s", err),
 		)
 		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var inter cisconf.CiscoInterface
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
 	}
 
 	var ethernetConfig *cisconf.CiscoInterface
@@ -144,21 +126,23 @@ func (r *InterfaceEthernetResource) Create(ctx context.Context, req resource.Cre
 		)
 		return
 	}
-	marshal, err := cisconf.Diff(inter, *ethernetConfig)
+	interCisco, err := models.InterfaceEthernetToCisconf(ctx, inter)
 	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface model to CISCONF",
+			fmt.Sprintf("Unable to convert interface model: %s", err),
+		)
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
+	marshal, err := cisconf.Diff(*interCisco, *ethernetConfig)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to diff interface",
+			fmt.Sprintf("Unable to diff interface: %s", err),
+		)
+		return
 	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -167,41 +151,16 @@ func (r *InterfaceEthernetResource) Create(ctx context.Context, req resource.Cre
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	inter, err = models.GetEthernetInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get ethernet interface",
+			fmt.Sprintf("Unable to get ethernet interface: %s", err),
 		)
 		return
 	}
 
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
-	}
-
-	data, err = models.InterfaceEthernetFromCisconf(ctx, &inter)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert CISCONF to interface model",
-			fmt.Sprintf("Unable to convert CISCONF to interface model: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &inter)...)
 }
 
 func (r *InterfaceEthernetResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -213,42 +172,16 @@ func (r *InterfaceEthernetResource) Read(ctx context.Context, req resource.ReadR
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	inter, err := models.GetEthernetInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get ethernet interface",
+			fmt.Sprintf("Unable to get ethernet interface: %s", err),
 		)
 		return
 	}
 
-	var inter cisconf.CiscoInterface
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
-	}
-
-	data, err = models.InterfaceEthernetFromCisconf(ctx, &inter)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert CISCONF to interface model",
-			fmt.Sprintf("Unable to convert CISCONF to interface model: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &inter)...)
 }
 
 func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -259,30 +192,14 @@ func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.Upd
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	config, err := r.client.Exec("sh running-config")
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
 
-	var inter cisconf.CiscoInterface
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
+	inter, err := models.GetEthernetInterface(ctx, r.client, data.ID.ValueString())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to get ethernet interface",
+			fmt.Sprintf("Unable to get ethernet interface: %s", err),
+		)
+		return
 	}
 
 	var ethernetConfig *cisconf.CiscoInterface
@@ -294,7 +211,15 @@ func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.Upd
 		)
 		return
 	}
-	marshal, err := cisconf.Diff(inter, *ethernetConfig)
+	interCisco, err := models.InterfaceEthernetToCisconf(ctx, inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface model to CISCONF",
+			fmt.Sprintf("Unable to convert interface model: %s", err),
+		)
+		return
+	}
+	marshal, err := cisconf.Diff(*interCisco, *ethernetConfig)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to diff interface",
@@ -302,12 +227,7 @@ func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.Upd
 		)
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		configs = append(configs, line)
-	}
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -316,41 +236,16 @@ func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.Upd
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	inter, err = models.GetEthernetInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get ethernet interface",
+			fmt.Sprintf("Unable to get ethernet interface: %s", err),
 		)
 		return
 	}
 
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
-	}
-
-	data, err = models.InterfaceEthernetFromCisconf(ctx, &inter)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert CISCONF to interface model",
-			fmt.Sprintf("Unable to convert CISCONF to interface model: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &inter)...)
 }
 
 func (r *InterfaceEthernetResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

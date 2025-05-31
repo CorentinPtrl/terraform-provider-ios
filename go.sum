@@ -1,3 +1,7 @@
+github.com/CorentinPtrl/cgnet v0.0.1 h1:2HteP7MaOoblMOT/k68JgEr3gwJGPeHH9kzjAEHU+aU=
+github.com/CorentinPtrl/cgnet v0.0.1/go.mod h1:SdvxED7oDks6+zjEebMoAov+QJTfY2IirO6Ys3gMX3w=
+github.com/CorentinPtrl/cisconf v0.0.4 h1:/pvOYzirRtMVR09WVbv2pukKRaYr7qZJpBbHW+0iIzA=
+github.com/CorentinPtrl/cisconf v0.0.4/go.mod h1:raEMIJURoLy0rATwCc65euYFiyz6vcUffnh3HiFvB+o=
 github.com/ProtonMail/go-crypto v1.1.3 h1:nRBOetoydLeUb4nHajyO2bKqMLfWQ/ZPwkXqXxPxCFk=
 github.com/ProtonMail/go-crypto v1.1.3/go.mod h1:rA3QumHc/FZ8pAHreoekgiAbzpNsfQAosU5td4SnOrE=
 github.com/agext/levenshtein v1.2.3 h1:YB2fHEn0UJagG8T1rrWknE3ZQzWM06O8AMAatNn7lmo=

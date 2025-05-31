@@ -6,6 +6,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
@@ -100,4 +101,40 @@ func InterfaceEthernetToCisconf(ctx context.Context, iface InterfaceEthernetMode
 	}
 	cisIface.IPHelperAddresses = helperAddresses
 	return cisIface, nil
+}
+
+func GetEthernetInterfaces(ctx context.Context, device *cgnet.Device) ([]InterfaceEthernetModel, error) {
+	config, err := device.Exec("sh running-config")
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute running config: %w", err)
+	}
+	var runningConfig cisconf.Config
+	err = cisconf.Unmarshal(config, &runningConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal running config: %w", err)
+	}
+	result := []InterfaceEthernetModel{}
+	for _, inter := range runningConfig.Interfaces {
+		var interfaceEthernet InterfaceEthernetModel
+		interfaceEthernet, err = InterfaceEthernetFromCisconf(ctx, &inter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert interface: %w", err)
+		}
+		result = append(result, interfaceEthernet)
+	}
+	return result, nil
+}
+
+func GetEthernetInterface(ctx context.Context, device *cgnet.Device, interfaceID string) (InterfaceEthernetModel, error) {
+	interfaces, err := GetEthernetInterfaces(ctx, device)
+	if err != nil {
+		return InterfaceEthernetModel{}, fmt.Errorf("failed to get Ethernet interfaces: %w", err)
+	}
+
+	for _, inter := range interfaces {
+		if inter.ID.ValueString() == interfaceID {
+			return inter, nil
+		}
+	}
+	return InterfaceEthernetModel{}, fmt.Errorf("interface %s not found", interfaceID)
 }

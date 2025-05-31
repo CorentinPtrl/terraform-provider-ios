@@ -6,8 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/CorentinPtrl/cisconf"
-	"github.com/Letsu/cgnet"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
@@ -108,35 +107,15 @@ func (d *InterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 
-	config, err := d.client.Exec("sh running-config")
+	interfaces, err := models.GetSwitchInterfaces(ctx, d.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get interfaces",
+			fmt.Sprintf("An error occurred while retrieving interfaces: %s", err),
 		)
 		return
 	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-	for _, inter := range runningConfig.Interfaces {
-		var interfaceSwitch models.InterfaceSwitchModel
-		interfaceSwitch, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to convert interface",
-				fmt.Sprintf("Unable to convert interface: %s", err),
-			)
-			return
-		}
-		data.Interfaces = append(data.Interfaces, interfaceSwitch)
-	}
+	data.Interfaces = interfaces
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

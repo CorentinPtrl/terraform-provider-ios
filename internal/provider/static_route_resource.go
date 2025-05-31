@@ -6,15 +6,14 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
-	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringplanmodifier"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"strings"
 	"terraform-provider-ios/internal/provider/models"
+	"terraform-provider-ios/internal/utils"
 )
 
 var _ resource.Resource = &StaticRouteResource{}
@@ -83,28 +82,19 @@ func (r *StaticRouteResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	routes, err := models.GetRoutes(r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get static routes",
+			fmt.Sprintf("An error occurred while retrieving static routes: %s", err),
 		)
 		return
 	}
 
-	var route *cisconf.Route
+	var route *models.RouteModel
 	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
+	for _, v := range routes {
+		if v.Prefix == data.Prefix && v.Mask == data.Mask {
 			route = &v
 			break
 		}
@@ -113,32 +103,22 @@ func (r *StaticRouteResource) Create(ctx context.Context, req resource.CreateReq
 	var marshal string
 	if route == nil {
 		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
+			models.RouteToCisconf(data),
 		}}
 		marshal, err = cisconf.Marshal(dest)
 	} else {
 		src := cisconf.RoutesType{Routes: []cisconf.Route{
-			*route,
+			models.RouteToCisconf(*route),
 		}}
 		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
+			models.RouteToCisconf(data),
 		}}
 		marshal, err = cisconf.Diff(src, dest)
 	}
 	if err != nil {
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
-	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -147,35 +127,28 @@ func (r *StaticRouteResource) Create(ctx context.Context, req resource.CreateReq
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	routes, err = models.GetRoutes(r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get static routes",
+			fmt.Sprintf("An error occurred while retrieving static routes: %s", err),
 		)
 		return
 	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
 	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
+	for _, v := range routes {
+		if v.Prefix == data.Prefix && v.Mask == data.Mask {
 			route = &v
 			break
 		}
 	}
 
-	data = models.RouteFromCisconf(ctx, *route)
+	if route == nil {
+		resp.State.RemoveResource(ctx)
+		return
+	}
 
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, route)...)
 }
 
 func (r *StaticRouteResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -187,28 +160,18 @@ func (r *StaticRouteResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	routes, err := models.GetRoutes(r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get static routes",
+			fmt.Sprintf("An error occurred while retrieving static routes: %s", err),
 		)
 		return
 	}
-	runningConfig := cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var route *cisconf.Route
+	var route *models.RouteModel
 	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
+	for _, v := range routes {
+		if v.Prefix == data.Prefix && v.Mask == data.Mask {
 			route = &v
 			break
 		}
@@ -219,9 +182,7 @@ func (r *StaticRouteResource) Read(ctx context.Context, req resource.ReadRequest
 		return
 	}
 
-	data = models.RouteFromCisconf(ctx, *route)
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &route)...)
 }
 
 func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -232,28 +193,19 @@ func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateReq
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	config, err := r.client.Exec("sh running-config")
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
 
-	var route *cisconf.Route
+	routes, err := models.GetRoutes(r.client)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to get static routes",
+			fmt.Sprintf("An error occurred while retrieving static routes: %s", err),
+		)
+		return
+	}
+	var route *models.RouteModel
 	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
+	for _, v := range routes {
+		if v.Prefix == data.Prefix && v.Mask == data.Mask {
 			route = &v
 			break
 		}
@@ -262,32 +214,22 @@ func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateReq
 	var marshal string
 	if route == nil {
 		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
+			models.RouteToCisconf(data),
 		}}
 		marshal, err = cisconf.Marshal(dest)
 	} else {
 		src := cisconf.RoutesType{Routes: []cisconf.Route{
-			*route,
+			models.RouteToCisconf(*route),
 		}}
 		dest := cisconf.RoutesType{Routes: []cisconf.Route{
-			models.RouteToCisconf(ctx, data),
+			models.RouteToCisconf(data),
 		}}
 		marshal, err = cisconf.Diff(src, dest)
 	}
 	if err != nil {
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
-	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -295,36 +237,23 @@ func (r *StaticRouteResource) Update(ctx context.Context, req resource.UpdateReq
 		)
 		return
 	}
-
-	config, err = r.client.Exec("sh running-config")
+	routes, err = models.GetRoutes(r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get static routes",
+			fmt.Sprintf("An error occurred while retrieving static routes: %s", err),
 		)
 		return
 	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
 	route = nil
-	for _, v := range runningConfig.Routes {
-		if v.Prefix == data.Prefix.ValueString() && v.Mask == data.Mask.ValueString() {
+	for _, v := range routes {
+		if v.Prefix == data.Prefix && v.Mask == data.Mask {
 			route = &v
 			break
 		}
 	}
 
-	data = models.RouteFromCisconf(ctx, *route)
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, route)...)
 }
 
 func (r *StaticRouteResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

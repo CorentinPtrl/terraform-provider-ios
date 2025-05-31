@@ -6,8 +6,8 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
-	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/booldefault"
@@ -16,9 +16,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/objectdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/stringdefault"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"strings"
 	"terraform-provider-ios/internal/provider/models"
+	"terraform-provider-ios/internal/utils"
 )
 
 var _ resource.Resource = &InterfaceSwitchResource{}
@@ -145,30 +144,13 @@ func (r *InterfaceSwitchResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	inter, err := models.GetSwitchInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get switch interface",
+			fmt.Sprintf("Unable to get switch interface: %s", err),
 		)
 		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var inter cisconf.CiscoInterface
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
 	}
 
 	var interfaceSwitch *cisconf.CiscoInterface
@@ -180,21 +162,23 @@ func (r *InterfaceSwitchResource) Create(ctx context.Context, req resource.Creat
 		)
 		return
 	}
-	marshal, err := cisconf.Diff(inter, *interfaceSwitch)
+	interCisco, err := models.InterfaceSwitchToCisconf(ctx, inter)
 	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface switch model",
+			fmt.Sprintf("Unable to convert interface switch model: %s", err),
+		)
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
+	marshal, err := cisconf.Diff(*interCisco, *interfaceSwitch)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to diff interface switch",
+			fmt.Sprintf("Unable to diff interface switch: %s", err),
+		)
+		return
 	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -203,41 +187,16 @@ func (r *InterfaceSwitchResource) Create(ctx context.Context, req resource.Creat
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	inter, err = models.GetSwitchInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get switch interface",
+			fmt.Sprintf("Unable to get switch interface: %s", err),
 		)
 		return
 	}
 
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
-	}
-
-	data, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert interface switch from cisconf",
-			fmt.Sprintf("Unable to convert interface switch: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &inter)...)
 }
 
 func (r *InterfaceSwitchResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -249,42 +208,16 @@ func (r *InterfaceSwitchResource) Read(ctx context.Context, req resource.ReadReq
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	inter, err := models.GetSwitchInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get switch interface",
+			fmt.Sprintf("Unable to get switch interface: %s", err),
 		)
 		return
 	}
 
-	var inter cisconf.CiscoInterface
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
-	}
-
-	data, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert interface switch from cisconf",
-			fmt.Sprintf("Unable to convert interface switch: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &inter)...)
 }
 
 func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -295,32 +228,15 @@ func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.Updat
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	config, err := r.client.Exec("sh running-config")
+
+	inter, err := models.GetSwitchInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get switch interface",
+			fmt.Sprintf("Unable to get switch interface: %s", err),
 		)
 		return
 	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var inter cisconf.CiscoInterface
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
-	}
-
 	var interfaceSwitch *cisconf.CiscoInterface
 	interfaceSwitch, err = models.InterfaceSwitchToCisconf(ctx, data)
 	if err != nil {
@@ -330,7 +246,15 @@ func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.Updat
 		)
 		return
 	}
-	marshal, err := cisconf.Diff(inter, *interfaceSwitch)
+	interCisco, err := models.InterfaceSwitchToCisconf(ctx, inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface switch model",
+			fmt.Sprintf("Unable to convert interface switch model: %s", err),
+		)
+		return
+	}
+	marshal, err := cisconf.Diff(*interCisco, *interfaceSwitch)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to diff interface",
@@ -338,12 +262,7 @@ func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.Updat
 		)
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		configs = append(configs, line)
-	}
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -352,41 +271,16 @@ func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.Updat
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	inter, err = models.GetSwitchInterface(ctx, r.client, data.ID.ValueString())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get switch interface",
+			fmt.Sprintf("Unable to get switch interface: %s", err),
 		)
 		return
 	}
 
-	for _, iface := range runningConfig.Interfaces {
-		if iface.Parent.Identifier == data.ID.ValueString() {
-			inter = iface
-			break
-		}
-	}
-
-	data, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert interface switch from cisconf",
-			fmt.Sprintf("Unable to convert interface switch: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &inter)...)
 }
 
 func (r *InterfaceSwitchResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

@@ -4,7 +4,8 @@
 package models
 
 import (
-	"context"
+	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 )
@@ -19,7 +20,7 @@ type RouteModel struct {
 	NextHop types.String `tfsdk:"next_hop"`
 }
 
-func RouteToCisconf(ctx context.Context, route RouteModel) cisconf.Route {
+func RouteToCisconf(route RouteModel) cisconf.Route {
 	return cisconf.Route{
 		Prefix:    route.Prefix.ValueString(),
 		Mask:      route.Mask.ValueString(),
@@ -27,10 +28,28 @@ func RouteToCisconf(ctx context.Context, route RouteModel) cisconf.Route {
 	}
 }
 
-func RouteFromCisconf(ctx context.Context, route cisconf.Route) RouteModel {
+func RouteFromCisconf(route cisconf.Route) RouteModel {
 	return RouteModel{
 		Prefix:  types.StringValue(route.Prefix),
 		Mask:    types.StringValue(route.Mask),
 		NextHop: types.StringValue(route.IpAddress),
 	}
+}
+
+func GetRoutes(device *cgnet.Device) ([]RouteModel, error) {
+	config, err := device.Exec("sh running-config")
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute running config: %w", err)
+	}
+	runningConfig := cisconf.Config{}
+	err = cisconf.Unmarshal(config, &runningConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal running config: %w", err)
+	}
+
+	result := []RouteModel{}
+	for _, v := range runningConfig.Routes {
+		result = append(result, RouteFromCisconf(v))
+	}
+	return result, nil
 }

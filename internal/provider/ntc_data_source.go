@@ -6,7 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/Letsu/cgnet"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/path"

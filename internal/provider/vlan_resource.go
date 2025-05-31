@@ -6,17 +6,14 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
-	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int32planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"github.com/sirikothe/gotextfsm"
-	"strings"
 	"terraform-provider-ios/internal/provider/models"
-	"terraform-provider-ios/internal/provider/ntc"
+	"terraform-provider-ios/internal/utils"
 )
 
 var _ resource.Resource = &VlanResource{}
@@ -79,90 +76,25 @@ func (r *VlanResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	vlan, err := models.GetVlan(r.client, int(data.Id.ValueInt32()))
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get vlan",
+			fmt.Sprintf("Unable to get vlan: %s", err),
 		)
 		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var vlan *cisconf.Vlan
-	vlan = nil
-	for _, v := range runningConfig.Vlans {
-		if v.Id == int(data.Id.ValueInt32()) {
-			vlan = &v
-			break
-		}
-	}
-
-	if vlan == nil {
-		fsm, err := ntc.GetTextFSM("cisco_ios_show_vlan.textfsm")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to get textfsm",
-				fmt.Sprintf("Unable to get textfsm: %s", err),
-			)
-			return
-		}
-		result, err := r.client.Exec("sh vlan")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to execute running config",
-				fmt.Sprintf("Unable to execute running config: %s", err),
-			)
-			return
-		}
-		parser := gotextfsm.ParserOutput{}
-		err = parser.ParseTextString(result, fsm, false)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to parse result",
-				fmt.Sprintf("Unable to parse result: %s", err),
-			)
-			return
-		}
-		for _, dic := range parser.Dict {
-			if dic["VLAN_ID"] == fmt.Sprintf("%d", data.Id.ValueInt32()) {
-				vlan = &cisconf.Vlan{
-					Id:   int(data.Id.ValueInt32()),
-					Name: dic["VLAN_NAME"].(string),
-				}
-				break
-			}
-		}
 	}
 
 	var marshal string
 	if vlan == nil {
 		marshal, err = cisconf.Marshal(models.VlanToCisconf(ctx, data))
 	} else {
-		marshal, err = cisconf.Diff(*vlan, models.VlanToCisconf(ctx, data))
+		marshal, err = cisconf.Diff(models.VlanToCisconf(ctx, *vlan), models.VlanToCisconf(ctx, data))
 	}
 	if err != nil {
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
-	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -171,73 +103,16 @@ func (r *VlanResource) Create(ctx context.Context, req resource.CreateRequest, r
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	vlan, err = models.GetVlan(r.client, int(data.Id.ValueInt32()))
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get vlan",
+			fmt.Sprintf("Unable to get vlan: %s", err),
 		)
 		return
 	}
 
-	vlan = nil
-	for _, v := range runningConfig.Vlans {
-		tflog.Info(ctx, fmt.Sprintf("Vlan %d found", v.Id))
-		if v.Id == int(data.Id.ValueInt32()) {
-			vlan = &v
-			break
-		}
-	}
-
-	if vlan == nil {
-		fsm, err := ntc.GetTextFSM("cisco_ios_show_vlan.textfsm")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to get textfsm",
-				fmt.Sprintf("Unable to get textfsm: %s", err),
-			)
-			return
-		}
-		result, err := r.client.Exec("sh vlan")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to execute running config",
-				fmt.Sprintf("Unable to execute running config: %s", err),
-			)
-			return
-		}
-		parser := gotextfsm.ParserOutput{}
-		err = parser.ParseTextString(result, fsm, false)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to parse result",
-				fmt.Sprintf("Unable to parse result: %s", err),
-			)
-			return
-		}
-		for _, dic := range parser.Dict {
-			if dic["VLAN_ID"] == fmt.Sprintf("%d", data.Id.ValueInt32()) {
-				vlan = &cisconf.Vlan{
-					Id:   int(data.Id.ValueInt32()),
-					Name: dic["VLAN_NAME"].(string),
-				}
-				break
-			}
-		}
-	}
-
-	data = models.VlanFromCisconf(ctx, *vlan)
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, vlan)...)
 }
 
 func (r *VlanResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -249,68 +124,13 @@ func (r *VlanResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	vlan, err := models.GetVlan(r.client, int(data.Id.ValueInt32()))
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get vlan",
+			fmt.Sprintf("Unable to get vlan: %s", err),
 		)
 		return
-	}
-	runningConfig := cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var vlan *cisconf.Vlan
-	vlan = nil
-	for _, v := range runningConfig.Vlans {
-		if v.Id == int(data.Id.ValueInt32()) {
-			vlan = &v
-			break
-		}
-	}
-
-	if vlan == nil {
-		fsm, err := ntc.GetTextFSM("cisco_ios_show_vlan.textfsm")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to get textfsm",
-				fmt.Sprintf("Unable to get textfsm: %s", err),
-			)
-			return
-		}
-		result, err := r.client.Exec("sh vlan")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to execute running config",
-				fmt.Sprintf("Unable to execute running config: %s", err),
-			)
-			return
-		}
-		parser := gotextfsm.ParserOutput{}
-		err = parser.ParseTextString(result, fsm, false)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to parse result",
-				fmt.Sprintf("Unable to parse result: %s", err),
-			)
-			return
-		}
-		for _, dic := range parser.Dict {
-			if dic["VLAN_ID"] == fmt.Sprintf("%d", data.Id.ValueInt32()) {
-				vlan = &cisconf.Vlan{
-					Id:   int(data.Id.ValueInt32()),
-					Name: dic["VLAN_NAME"].(string),
-				}
-				break
-			}
-		}
 	}
 
 	if vlan == nil {
@@ -318,9 +138,7 @@ func (r *VlanResource) Read(ctx context.Context, req resource.ReadRequest, resp 
 		return
 	}
 
-	data = models.VlanFromCisconf(ctx, *vlan)
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, vlan)...)
 }
 
 func (r *VlanResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -331,90 +149,26 @@ func (r *VlanResource) Update(ctx context.Context, req resource.UpdateRequest, r
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	config, err := r.client.Exec("sh running-config")
+
+	vlan, err := models.GetVlan(r.client, int(data.Id.ValueInt32()))
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get vlan",
+			fmt.Sprintf("Unable to get vlan: %s", err),
 		)
 		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var vlan *cisconf.Vlan
-	vlan = nil
-	for _, v := range runningConfig.Vlans {
-		if v.Id == int(data.Id.ValueInt32()) {
-			vlan = &v
-			break
-		}
-	}
-
-	if vlan == nil {
-		fsm, err := ntc.GetTextFSM("cisco_ios_show_vlan.textfsm")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to get textfsm",
-				fmt.Sprintf("Unable to get textfsm: %s", err),
-			)
-			return
-		}
-		result, err := r.client.Exec("sh vlan")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to execute running config",
-				fmt.Sprintf("Unable to execute running config: %s", err),
-			)
-			return
-		}
-		parser := gotextfsm.ParserOutput{}
-		err = parser.ParseTextString(result, fsm, false)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to parse result",
-				fmt.Sprintf("Unable to parse result: %s", err),
-			)
-			return
-		}
-		for _, dic := range parser.Dict {
-			if dic["VLAN_ID"] == fmt.Sprintf("%d", data.Id.ValueInt32()) {
-				vlan = &cisconf.Vlan{
-					Id:   int(data.Id.ValueInt32()),
-					Name: dic["VLAN_NAME"].(string),
-				}
-				break
-			}
-		}
 	}
 
 	var marshal string
 	if vlan == nil {
 		marshal, err = cisconf.Marshal(models.VlanToCisconf(ctx, data))
 	} else {
-		marshal, err = cisconf.Diff(*vlan, models.VlanToCisconf(ctx, data))
+		marshal, err = cisconf.Diff(models.VlanToCisconf(ctx, *vlan), models.VlanToCisconf(ctx, data))
 	}
 	if err != nil {
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
-	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -423,72 +177,16 @@ func (r *VlanResource) Update(ctx context.Context, req resource.UpdateRequest, r
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	vlan, err = models.GetVlan(r.client, int(data.Id.ValueInt32()))
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get vlan",
+			fmt.Sprintf("Unable to get vlan: %s", err),
 		)
 		return
 	}
 
-	vlan = nil
-	for _, v := range runningConfig.Vlans {
-		if v.Id == int(data.Id.ValueInt32()) {
-			vlan = &v
-			break
-		}
-	}
-
-	if vlan == nil {
-		fsm, err := ntc.GetTextFSM("cisco_ios_show_vlan.textfsm")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to get textfsm",
-				fmt.Sprintf("Unable to get textfsm: %s", err),
-			)
-			return
-		}
-		result, err := r.client.Exec("sh vlan")
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to execute running config",
-				fmt.Sprintf("Unable to execute running config: %s", err),
-			)
-			return
-		}
-		parser := gotextfsm.ParserOutput{}
-		err = parser.ParseTextString(result, fsm, false)
-		if err != nil {
-			resp.Diagnostics.AddError(
-				"Failed to parse result",
-				fmt.Sprintf("Unable to parse result: %s", err),
-			)
-			return
-		}
-		for _, dic := range parser.Dict {
-			if dic["VLAN_ID"] == fmt.Sprintf("%d", data.Id.ValueInt32()) {
-				vlan = &cisconf.Vlan{
-					Id:   int(data.Id.ValueInt32()),
-					Name: dic["VLAN_NAME"].(string),
-				}
-				break
-			}
-		}
-	}
-
-	data = models.VlanFromCisconf(ctx, *vlan)
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, vlan)...)
 }
 
 func (r *VlanResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {

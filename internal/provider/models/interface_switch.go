@@ -6,6 +6,7 @@ package models
 import (
 	"context"
 	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -103,6 +104,7 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 	st := SpanningTree{
 		Portfast: types.StringValue(iface.STPPortFast),
 	}
+	// nolint QF1003
 	if iface.STPBpduGuard == "" {
 		st.BpduGuard = types.BoolNull()
 	} else if iface.STPBpduGuard == "enable" {
@@ -163,7 +165,7 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) (
 
 	if iface.Access.IsUnknown() && iface.Trunk.IsUnknown() {
 		cisIface.Switchport = false
-	} else if !(iface.Trunk.IsUnknown() || iface.Trunk.IsNull()) {
+	} else if !iface.Trunk.IsUnknown() && !iface.Trunk.IsNull() {
 		cisIface.Switchport = true
 		cisIface.Access = false
 		cisIface.Trunk = true
@@ -181,7 +183,7 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) (
 		for _, vlan := range allowedVlans {
 			cisIface.TrunkAllowedVlan = append(cisIface.TrunkAllowedVlan, int(vlan.ValueInt32()))
 		}
-	} else if !(iface.Access.IsUnknown() || iface.Access.IsNull()) {
+	} else if !iface.Access.IsUnknown() && !iface.Access.IsNull() {
 		cisIface.Switchport = true
 		cisIface.Trunk = false
 		cisIface.Access = true
@@ -191,7 +193,7 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) (
 		}
 		cisIface.AccessVlan = int(access.AccessVlan.ValueInt32())
 	}
-	if !(iface.SpanningTree.IsUnknown() || iface.SpanningTree.IsNull()) {
+	if !iface.SpanningTree.IsUnknown() && !iface.SpanningTree.IsNull() {
 		st, err := SpanningTreeFromObjectValue(ctx, iface.SpanningTree)
 		if err != nil {
 			return nil, fmt.Errorf("failed to convert SpanningTree from ObjectValue: %v", err)
@@ -206,4 +208,40 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) (
 		}
 	}
 	return cisIface, nil
+}
+
+func GetSwitchInterfaces(ctx context.Context, device *cgnet.Device) ([]InterfaceSwitchModel, error) {
+	config, err := device.Exec("sh running-config")
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute running config: %w", err)
+	}
+	var runningConfig cisconf.Config
+	err = cisconf.Unmarshal(config, &runningConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to unmarshal running config: %w", err)
+	}
+	result := []InterfaceSwitchModel{}
+	for _, inter := range runningConfig.Interfaces {
+		var interfaceSwitch InterfaceSwitchModel
+		interfaceSwitch, err = InterfaceSwitchFromCisconf(ctx, &inter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to convert interface: %w", err)
+		}
+		result = append(result, interfaceSwitch)
+	}
+	return result, nil
+}
+
+func GetSwitchInterface(ctx context.Context, device *cgnet.Device, interfaceID string) (InterfaceSwitchModel, error) {
+	interfaces, err := GetSwitchInterfaces(ctx, device)
+	if err != nil {
+		return InterfaceSwitchModel{}, fmt.Errorf("failed to get switch interfaces: %w", err)
+	}
+
+	for _, inter := range interfaces {
+		if inter.ID.ValueString() == interfaceID {
+			return inter, nil
+		}
+	}
+	return InterfaceSwitchModel{}, fmt.Errorf("interface %s not found", interfaceID)
 }

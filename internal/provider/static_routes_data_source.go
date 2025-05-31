@@ -6,8 +6,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	"github.com/CorentinPtrl/cisconf"
-	"github.com/Letsu/cgnet"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/datasource/schema"
 	"terraform-provider-ios/internal/provider/models"
@@ -80,27 +79,14 @@ func (d *StaticRoutesDataSource) Read(ctx context.Context, req datasource.ReadRe
 		return
 	}
 
-	config, err := d.client.Exec("sh running-config")
+	routes, err := models.GetRoutes(d.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get static routes",
+			fmt.Sprintf("An error occurred while retrieving static routes: %s", err),
 		)
 		return
 	}
-	runningConfig := cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	for _, v := range runningConfig.Routes {
-		data.Routes = append(data.Routes, models.RouteFromCisconf(ctx, v))
-	}
-
+	data.Routes = routes
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

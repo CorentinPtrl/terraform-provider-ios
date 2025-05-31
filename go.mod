@@ -5,6 +5,7 @@ go 1.24
 toolchain go1.24.2
 
 require (
+	github.com/CorentinPtrl/cgnet v0.0.1
 	github.com/hashicorp/terraform-plugin-framework v1.14.1
 	github.com/hashicorp/terraform-plugin-go v0.26.0
 	github.com/hashicorp/terraform-plugin-log v0.9.0
@@ -22,8 +23,7 @@ require (
 )
 
 require (
-	github.com/CorentinPtrl/cisconf v0.0.0
-	github.com/Letsu/cgnet v0.0.0
+	github.com/CorentinPtrl/cisconf v0.0.4
 	github.com/fatih/color v1.16.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/go-cmp v0.7.0 // indirect
@@ -50,7 +50,3 @@ require (
 	google.golang.org/grpc v1.69.4 // indirect
 	google.golang.org/protobuf v1.36.3 // indirect
 )
-
-replace github.com/CorentinPtrl/cisconf => /home/corentin/GolandProjects/cisconf
-
-replace github.com/Letsu/cgnet => /home/corentin/GolandProjects/cgnet

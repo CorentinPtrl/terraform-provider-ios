@@ -5,7 +5,6 @@ linters:
     - copyloopvar
     - durationcheck
     - errcheck
-    - forcetypeassert
     - godot
     - ineffassign
     - makezero

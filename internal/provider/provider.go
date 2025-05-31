@@ -5,7 +5,7 @@ package provider
 
 import (
 	"context"
-	"github.com/Letsu/cgnet"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/datasource"
 	"github.com/hashicorp/terraform-plugin-framework/ephemeral"
 	"github.com/hashicorp/terraform-plugin-framework/function"
@@ -15,6 +15,7 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"os"
+	"strconv"
 	"strings"
 	"terraform-provider-ios/internal/provider/ntc"
 )
@@ -35,6 +36,7 @@ type CiscoIosProvider struct {
 // CiscoIosProviderModel describes the provider data model.
 type CiscoIosProviderModel struct {
 	Host     types.String `tfsdk:"host"`
+	Port     types.Int32  `tfsdk:"port"`
 	Username types.String `tfsdk:"username"`
 	Password types.String `tfsdk:"password"`
 }
@@ -48,7 +50,10 @@ func (p *CiscoIosProvider) Schema(ctx context.Context, req provider.SchemaReques
 	resp.Schema = schema.Schema{
 		Attributes: map[string]schema.Attribute{
 			"host": schema.StringAttribute{
-				Optional: true,
+				Required: true,
+			},
+			"port": schema.Int32Attribute{
+				Required: true,
 			},
 			"username": schema.StringAttribute{
 				Optional: true,
@@ -78,6 +83,15 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 		)
 	}
 
+	if config.Port.IsUnknown() {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("port"),
+			"Unknown Cisco IOS Port",
+			"The provider cannot create the Cisco IOS ssh client as there is an unknown configuration value for the Cisco IOS port. "+
+				"Either target apply the source of the value first, set the value statically in the configuration, or use the IOS_PORT environment variable.",
+		)
+	}
+
 	if config.Username.IsUnknown() {
 		resp.Diagnostics.AddAttributeError(
 			path.Root("username"),
@@ -103,6 +117,7 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 	host := os.Getenv("IOS_HOST")
 	username := os.Getenv("IOS_USERNAME")
 	password := os.Getenv("IOS_PASSWORD")
+	port := os.Getenv("IOS_PORT")
 
 	if !config.Host.IsNull() {
 		host = config.Host.ValueString()
@@ -114,6 +129,10 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 
 	if !config.Password.IsNull() {
 		password = config.Password.ValueString()
+	}
+
+	if !config.Port.IsNull() {
+		port = strconv.Itoa(int(config.Port.ValueInt32()))
 	}
 
 	if host == "" {
@@ -146,13 +165,23 @@ func (p *CiscoIosProvider) Configure(ctx context.Context, req provider.Configure
 		)
 	}
 
+	if port == "" {
+		resp.Diagnostics.AddAttributeError(
+			path.Root("port"),
+			"Missing Cisco IOS Port",
+			"The provider cannot create the Cisco IOS client as there is a missing or empty value for the Cisco IOS port. "+
+				"Set the port value in the configuration or use the IOS_PORT environment variable. "+
+				"If either is already set, ensure the value is not empty.",
+		)
+	}
+
 	if resp.Diagnostics.HasError() {
 		return
 	}
 
 	session := cgnet.Device{
 		Ip:       host,
-		Port:     "22",
+		Port:     port,
 		Username: username,
 		Password: password,
 		ConnType: cgnet.SSH,

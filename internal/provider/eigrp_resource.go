@@ -6,17 +6,16 @@ package provider
 import (
 	"context"
 	"fmt"
+	"github.com/CorentinPtrl/cgnet"
 	"github.com/CorentinPtrl/cisconf"
-	"github.com/Letsu/cgnet"
 	"github.com/hashicorp/terraform-plugin-framework/resource"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/int64planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/listdefault"
 	"github.com/hashicorp/terraform-plugin-framework/resource/schema/planmodifier"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
-	"strings"
 	"terraform-provider-ios/internal/provider/models"
+	"terraform-provider-ios/internal/utils"
 )
 
 var _ resource.Resource = &EigrpResource{}
@@ -82,36 +81,17 @@ func (r *EigrpResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	eigrp, err := models.GetEigrpProcess(ctx, r.client, data.As.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get EIGRP process",
+			fmt.Sprintf("An error occurred while retrieving EIGRP process: %s", err),
 		)
 		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var eigrp *cisconf.Eigrp
-	eigrp = nil
-	for _, v := range runningConfig.EIGRPProcess {
-		if v.Asn == int(data.As.ValueInt64()) {
-			eigrp = &v
-			break
-		}
 	}
 
 	var marshal string
-	var eigrpcisco cisconf.Eigrp
-	eigrpcisco, err = models.EigrpToCisconf(ctx, data)
+	datacisco, err := models.EigrpToCisconf(ctx, data)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to convert EIGRP model to cisconf",
@@ -120,24 +100,27 @@ func (r *EigrpResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 	if eigrp == nil {
-		marshal, err = cisconf.Marshal(eigrpcisco)
+		marshal, err = cisconf.Marshal(datacisco)
 	} else {
-		marshal, err = cisconf.Diff(*eigrp, eigrpcisco)
+		var eigrpcisco cisconf.Eigrp
+		eigrpcisco, err = models.EigrpToCisconf(ctx, data)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to convert EIGRP model to cisconf",
+				fmt.Sprintf("Unable to convert EIGRP model: %s", err),
+			)
+			return
+		}
+		marshal, err = cisconf.Diff(eigrpcisco, datacisco)
 	}
 	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to marshal EIGRP configuration",
+			fmt.Sprintf("Unable to marshal EIGRP configuration: %s", err),
+		)
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
-	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -146,41 +129,16 @@ func (r *EigrpResource) Create(ctx context.Context, req resource.CreateRequest, 
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	eigrp, err = models.GetEigrpProcess(ctx, r.client, data.As.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get EIGRP process",
+			fmt.Sprintf("An error occurred while retrieving EIGRP process: %s", err),
 		)
 		return
 	}
 
-	eigrp = nil
-	for _, v := range runningConfig.EIGRPProcess {
-		if v.Asn == int(data.As.ValueInt64()) {
-			eigrp = &v
-			break
-		}
-	}
-
-	data, err = models.EigrpFromCisconf(ctx, *eigrp)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert EIGRP from cisconf",
-			fmt.Sprintf("Unable to convert EIGRP: %s", err),
-		)
-		return
-	}
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, eigrp)...)
 }
 
 func (r *EigrpResource) Read(ctx context.Context, req resource.ReadRequest, resp *resource.ReadResponse) {
@@ -192,31 +150,13 @@ func (r *EigrpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	config, err := r.client.Exec("sh running-config")
+	eigrp, err := models.GetEigrpProcess(ctx, r.client, data.As.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
+			"Failed to get EIGRP process",
+			fmt.Sprintf("An error occurred while retrieving EIGRP process: %s", err),
 		)
 		return
-	}
-	runningConfig := cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
-
-	var eigrp *cisconf.Eigrp
-	eigrp = nil
-	for _, v := range runningConfig.EIGRPProcess {
-		if v.Asn == int(data.As.ValueInt64()) {
-			eigrp = &v
-			break
-		}
 	}
 
 	if eigrp == nil {
@@ -224,16 +164,7 @@ func (r *EigrpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	data, err = models.EigrpFromCisconf(ctx, *eigrp)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert EIGRP from cisconf",
-			fmt.Sprintf("Unable to convert EIGRP: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &eigrp)...)
 }
 
 func (r *EigrpResource) Update(ctx context.Context, req resource.UpdateRequest, resp *resource.UpdateResponse) {
@@ -244,36 +175,18 @@ func (r *EigrpResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	if resp.Diagnostics.HasError() {
 		return
 	}
-	config, err := r.client.Exec("sh running-config")
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	var runningConfig cisconf.Config
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
-		)
-		return
-	}
 
-	var eigrp *cisconf.Eigrp
-	eigrp = nil
-	for _, v := range runningConfig.EIGRPProcess {
-		if v.Asn == int(data.As.ValueInt64()) {
-			eigrp = &v
-			break
-		}
+	eigrp, err := models.GetEigrpProcess(ctx, r.client, data.As.ValueInt64())
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to get EIGRP process",
+			fmt.Sprintf("An error occurred while retrieving EIGRP process: %s", err),
+		)
+		return
 	}
 
 	var marshal string
-	var eigrpcisco cisconf.Eigrp
-	eigrpcisco, err = models.EigrpToCisconf(ctx, data)
+	datacisco, err := models.EigrpToCisconf(ctx, data)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to convert EIGRP model to cisconf",
@@ -282,24 +195,27 @@ func (r *EigrpResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 	if eigrp == nil {
-		marshal, err = cisconf.Marshal(eigrpcisco)
+		marshal, err = cisconf.Marshal(datacisco)
 	} else {
-		marshal, err = cisconf.Diff(*eigrp, eigrpcisco)
+		var eigrpcisco cisconf.Eigrp
+		eigrpcisco, err = models.EigrpToCisconf(ctx, data)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to convert EIGRP model to cisconf",
+				fmt.Sprintf("Unable to convert EIGRP model: %s", err),
+			)
+			return
+		}
+		marshal, err = cisconf.Diff(eigrpcisco, datacisco)
 	}
 	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to marshal EIGRP configuration",
+			fmt.Sprintf("Unable to marshal EIGRP configuration: %s", err),
+		)
 		return
 	}
-	lines := strings.Split(string(marshal), "\n")
-	configs := []string{}
-	for _, line := range lines {
-		cmd := strings.Trim(line, " ")
-		if strings.Contains(cmd, "!") {
-			continue
-		}
-		configs = append(configs, cmd)
-	}
-	tflog.Info(ctx, marshal)
-	err = r.client.Configure(configs)
+	err = utils.ConfigDevice(marshal, r.client)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to configure interface",
@@ -308,42 +224,16 @@ func (r *EigrpResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		return
 	}
 
-	config, err = r.client.Exec("sh running-config")
+	eigrp, err = models.GetEigrpProcess(ctx, r.client, data.As.ValueInt64())
 	if err != nil {
 		resp.Diagnostics.AddError(
-			"Failed to execute running config",
-			fmt.Sprintf("Unable to execute running config: %s", err),
-		)
-		return
-	}
-	runningConfig = cisconf.Config{}
-	err = cisconf.Unmarshal(config, &runningConfig)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to unmarshal running config",
-			fmt.Sprintf("Unable to parse running config: %s", err),
+			"Failed to get EIGRP process",
+			fmt.Sprintf("An error occurred while retrieving EIGRP process: %s", err),
 		)
 		return
 	}
 
-	eigrp = nil
-	for _, v := range runningConfig.EIGRPProcess {
-		if v.Asn == int(data.As.ValueInt64()) {
-			eigrp = &v
-			break
-		}
-	}
-
-	data, err = models.EigrpFromCisconf(ctx, *eigrp)
-	if err != nil {
-		resp.Diagnostics.AddError(
-			"Failed to convert EIGRP from cisconf",
-			fmt.Sprintf("Unable to convert EIGRP: %s", err),
-		)
-		return
-	}
-
-	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
+	resp.Diagnostics.Append(resp.State.Set(ctx, &eigrp)...)
 }
 
 func (r *EigrpResource) Delete(ctx context.Context, req resource.DeleteRequest, resp *resource.DeleteResponse) {
