@@ -135,7 +135,16 @@ func (r *InterfaceEthernetResource) Create(ctx context.Context, req resource.Cre
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceEthernetToCisconf(ctx, data))
+	var ethernetConfig *cisconf.CiscoInterface
+	ethernetConfig, err = models.InterfaceEthernetToCisconf(ctx, data)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface model to CISCONF",
+			fmt.Sprintf("Unable to convert interface model: %s", err),
+		)
+		return
+	}
+	marshal, err := cisconf.Diff(inter, *ethernetConfig)
 	if err != nil {
 		return
 	}
@@ -183,7 +192,14 @@ func (r *InterfaceEthernetResource) Create(ctx context.Context, req resource.Cre
 		}
 	}
 
-	data = models.InterfaceEthernetFromCisconf(ctx, &inter)
+	data, err = models.InterfaceEthernetFromCisconf(ctx, &inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert CISCONF to interface model",
+			fmt.Sprintf("Unable to convert CISCONF to interface model: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -223,7 +239,14 @@ func (r *InterfaceEthernetResource) Read(ctx context.Context, req resource.ReadR
 		}
 	}
 
-	data = models.InterfaceEthernetFromCisconf(ctx, &inter)
+	data, err = models.InterfaceEthernetFromCisconf(ctx, &inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert CISCONF to interface model",
+			fmt.Sprintf("Unable to convert CISCONF to interface model: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -262,7 +285,16 @@ func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.Upd
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceEthernetToCisconf(ctx, data))
+	var ethernetConfig *cisconf.CiscoInterface
+	ethernetConfig, err = models.InterfaceEthernetToCisconf(ctx, data)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface model to CISCONF",
+			fmt.Sprintf("Unable to convert interface model: %s", err),
+		)
+		return
+	}
+	marshal, err := cisconf.Diff(inter, *ethernetConfig)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to diff interface",
@@ -275,9 +307,6 @@ func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.Upd
 	for _, line := range lines {
 		configs = append(configs, line)
 	}
-	tflog.Info(ctx, marshal)
-	tflog.Info(ctx, fmt.Sprintf("Src:\n\n %+v\n\n", inter))
-	tflog.Info(ctx, fmt.Sprintf("Dest:\n\n %+v\n\n", *models.InterfaceEthernetToCisconf(ctx, data)))
 	err = r.client.Configure(configs)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -312,7 +341,14 @@ func (r *InterfaceEthernetResource) Update(ctx context.Context, req resource.Upd
 		}
 	}
 
-	data = models.InterfaceEthernetFromCisconf(ctx, &inter)
+	data, err = models.InterfaceEthernetFromCisconf(ctx, &inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert CISCONF to interface model",
+			fmt.Sprintf("Unable to convert CISCONF to interface model: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

@@ -9,7 +9,6 @@ import (
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net"
 	"terraform-provider-ios/internal/utils"
 )
@@ -36,13 +35,12 @@ func (ip IpInterfaceModel) AttributeValues() map[string]attr.Value {
 	}
 }
 
-func InterfaceEthernetFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) InterfaceEthernetModel {
+func InterfaceEthernetFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) (InterfaceEthernetModel, error) {
 	ipsModel := make([]IpInterfaceModel, len(iface.Ips))
 	for i, ip := range iface.Ips {
 		cidr, err := utils.SubnetMaskToCIDR(ip.Subnet)
 		if err != nil {
-			tflog.Error(ctx, fmt.Sprintf("Failed to convert subnet %s to CIDR: %v", ip.Subnet, err))
-			return InterfaceEthernetModel{}
+			return InterfaceEthernetModel{}, fmt.Errorf("failed to convert subnet %s to CIDR: %v", ip.Subnet, err)
 		}
 		ipsModel[i] = IpInterfaceModel{
 			Ip: types.StringValue(fmt.Sprintf("%s/%d", ip.Ip, cidr)),
@@ -50,13 +48,11 @@ func InterfaceEthernetFromCisconf(ctx context.Context, iface *cisconf.CiscoInter
 	}
 	ips, err := types.ListValueFrom(ctx, types.ObjectType{}.WithAttributeTypes(IpInterfaceModel{}.AttributeTypes()), ipsModel)
 	if err != nil {
-		tflog.Error(ctx, fmt.Sprintf("Failed to convert IP list to ListValue: %v", err))
-		return InterfaceEthernetModel{}
+		return InterfaceEthernetModel{}, fmt.Errorf("failed to convert IP list to ListValue: %v", err)
 	}
 	helperAdresses, diags := types.ListValueFrom(ctx, types.StringType, iface.IPHelperAddresses)
 	if diags.HasError() {
-		tflog.Error(ctx, fmt.Sprintf("Failed to convert helper addresses to ListValue: %v", diags))
-		return InterfaceEthernetModel{}
+		return InterfaceEthernetModel{}, fmt.Errorf("failed to convert helper addresses to ListValue: %v", diags)
 	}
 	return InterfaceEthernetModel{
 		InterfaceModel: InterfaceModel{
@@ -66,10 +62,10 @@ func InterfaceEthernetFromCisconf(ctx context.Context, iface *cisconf.CiscoInter
 		},
 		Ips:             ips,
 		HelperAddresses: helperAdresses,
-	}
+	}, nil
 }
 
-func InterfaceEthernetToCisconf(ctx context.Context, iface InterfaceEthernetModel) *cisconf.CiscoInterface {
+func InterfaceEthernetToCisconf(ctx context.Context, iface InterfaceEthernetModel) (*cisconf.CiscoInterface, error) {
 	cisIface := &cisconf.CiscoInterface{
 		Parent: cisconf.CiscoInterfaceParent{
 			Identifier: iface.ID.ValueString(),
@@ -81,18 +77,15 @@ func InterfaceEthernetToCisconf(ctx context.Context, iface InterfaceEthernetMode
 	var ips []IpInterfaceModel
 	err := iface.Ips.ElementsAs(ctx, &ips, false)
 	if err != nil {
-		tflog.Error(ctx, fmt.Sprintf("Failed to convert IP list to slice: %v", err))
-		return nil
+		return nil, fmt.Errorf("failed to convert IP list to slice: %v", err)
 	}
 	for _, ip := range ips {
 		if ip.Ip.IsNull() || ip.Ip.ValueString() == "" {
-			tflog.Error(ctx, "IP address is null or empty")
-			return nil
+			return nil, fmt.Errorf("IP address is null or empty")
 		}
 		host, ipNet, err := net.ParseCIDR(ip.Ip.ValueString())
 		if err != nil {
-			tflog.Info(ctx, fmt.Sprintf("Failed to parse CIDR %s: %v", ip.Ip.ValueString(), err))
-			return nil
+			return nil, fmt.Errorf("failed to parse CIDR %s: %v", ip.Ip.ValueString(), err)
 		}
 		mask := net.IP(ipNet.Mask).String()
 		cisIface.Ips = append(cisIface.Ips, cisconf.Ip{
@@ -103,9 +96,8 @@ func InterfaceEthernetToCisconf(ctx context.Context, iface InterfaceEthernetMode
 	var helperAddresses []string
 	err = iface.HelperAddresses.ElementsAs(ctx, &helperAddresses, false)
 	if err != nil {
-		tflog.Error(ctx, fmt.Sprintf("Failed to convert helper addresses to slice: %v", err))
-		return nil
+		return nil, fmt.Errorf("failed to convert helper addresses to slice: %v", err)
 	}
 	cisIface.IPHelperAddresses = helperAddresses
-	return cisIface
+	return cisIface, nil
 }

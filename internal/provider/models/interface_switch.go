@@ -5,6 +5,7 @@ package models
 
 import (
 	"context"
+	"fmt"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/diag"
@@ -80,7 +81,7 @@ func (trunk Trunk) AttributeValues() map[string]attr.Value {
 	}
 }
 
-func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) InterfaceSwitchModel {
+func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) (InterfaceSwitchModel, error) {
 	var switchport types.String
 	if iface.Switchport {
 		if iface.Trunk {
@@ -96,8 +97,7 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 		var err diag.Diagnostics
 		allowedVlans, err = types.ListValueFrom(ctx, types.Int32Type, iface.TrunkAllowedVlan)
 		if err != nil {
-			tflog.Error(ctx, "Failed to convert trunk allowed VLANs to list")
-			return InterfaceSwitchModel{}
+			return InterfaceSwitchModel{}, fmt.Errorf("failed to convert trunk allowed VLANs to list: %v", err)
 		}
 	}
 	st := SpanningTree{
@@ -112,8 +112,7 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 	}
 	st_obj, diags := types.ObjectValue(st.AttributeTypes(), st.AttributeValues())
 	if diags.HasError() {
-		tflog.Error(ctx, "Failed to convert SpanningTree to object value")
-		return InterfaceSwitchModel{}
+		return InterfaceSwitchModel{}, fmt.Errorf("failed to convert SpanningTree to object value: %v", diags)
 	}
 
 	access_obj := types.ObjectNull(Access{}.AttributeTypes())
@@ -124,8 +123,7 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 
 		access_obj, diags = types.ObjectValue(access.AttributeTypes(), access.AttributeValues())
 		if diags.HasError() {
-			tflog.Error(ctx, "Failed to convert Access to object value")
-			return InterfaceSwitchModel{}
+			return InterfaceSwitchModel{}, fmt.Errorf("failed to convert Access to object value: %v", diags)
 		}
 	}
 
@@ -137,8 +135,7 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 		}
 		trunk_obj, diags = types.ObjectValue(trunk.AttributeTypes(), trunk.AttributeValues())
 		if diags.HasError() {
-			tflog.Error(ctx, "Failed to convert Trunk to object value")
-			return InterfaceSwitchModel{}
+			return InterfaceSwitchModel{}, fmt.Errorf("failed to convert Trunk to object value: %v", diags)
 		}
 	}
 
@@ -152,10 +149,10 @@ func InterfaceSwitchFromCisconf(ctx context.Context, iface *cisconf.CiscoInterfa
 			Description: types.StringValue(iface.Description),
 			Shutdown:    types.BoolValue(iface.Shutdown),
 		},
-	}
+	}, nil
 }
 
-func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) *cisconf.CiscoInterface {
+func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) (*cisconf.CiscoInterface, error) {
 	cisIface := &cisconf.CiscoInterface{
 		Parent: cisconf.CiscoInterfaceParent{
 			Identifier: iface.ID.ValueString(),
@@ -172,14 +169,13 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) *
 		cisIface.Trunk = true
 		trunk, err := TrunkFromObjectValue(ctx, iface.Trunk)
 		if err != nil {
-			tflog.Error(ctx, "Failed to convert Trunk from ObjectValue")
-			return nil
+			return nil, fmt.Errorf("failed to convert Trunk from ObjectValue: %v", err)
 		}
 		cisIface.Encapsulation = trunk.Encapsulation.ValueString()
 		allowedVlans := make([]types.Int32, 0, len(trunk.AllowedVlans.Elements()))
 		diags := trunk.AllowedVlans.ElementsAs(ctx, &allowedVlans, false)
 		if diags.HasError() {
-			return nil
+			return nil, fmt.Errorf("failed to convert AllowedVlans from ListValue: %v", diags)
 		}
 		cisIface.TrunkAllowedVlan = []int{}
 		for _, vlan := range allowedVlans {
@@ -191,16 +187,14 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) *
 		cisIface.Access = true
 		access, err := AccessFromObjectValue(ctx, iface.Access)
 		if err != nil {
-			tflog.Error(ctx, "Failed to convert Access from ObjectValue")
-			return nil
+			return nil, fmt.Errorf("failed to convert Access from ObjectValue: %v", err)
 		}
 		cisIface.AccessVlan = int(access.AccessVlan.ValueInt32())
 	}
 	if !(iface.SpanningTree.IsUnknown() || iface.SpanningTree.IsNull()) {
 		st, err := SpanningTreeFromObjectValue(ctx, iface.SpanningTree)
 		if err != nil {
-			tflog.Error(ctx, "Failed to convert SpanningTree from ObjectValue")
-			return nil
+			return nil, fmt.Errorf("failed to convert SpanningTree from ObjectValue: %v", err)
 		}
 		cisIface.STPPortFast = st.Portfast.ValueString()
 		if st.BpduGuard.IsNull() {
@@ -211,5 +205,5 @@ func InterfaceSwitchToCisconf(ctx context.Context, iface InterfaceSwitchModel) *
 			cisIface.STPBpduGuard = "disable"
 		}
 	}
-	return cisIface
+	return cisIface, nil
 }

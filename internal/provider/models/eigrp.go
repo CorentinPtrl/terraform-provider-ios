@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"github.com/CorentinPtrl/cisconf"
 	"github.com/hashicorp/terraform-plugin-framework/types"
-	"github.com/hashicorp/terraform-plugin-log/tflog"
 	"net"
 	"terraform-provider-ios/internal/utils"
 )
@@ -18,22 +17,20 @@ type EigrpModel struct {
 	Networks types.List  `tfsdk:"networks"`
 }
 
-func EigrpToCisconf(ctx context.Context, data EigrpModel) cisconf.Eigrp {
+func EigrpToCisconf(ctx context.Context, data EigrpModel) (cisconf.Eigrp, error) {
 	var networks []cisconf.EigrpNetwork
 	var networkList []string
 	data.Networks.ElementsAs(ctx, &networkList, true)
 	for _, network := range networkList {
 		_, ipNet, err := net.ParseCIDR(network)
 		if err != nil {
-			tflog.Info(ctx, fmt.Sprintf("Failed to parse CIDR %s: %v", network, err))
-			return cisconf.Eigrp{}
+			return cisconf.Eigrp{}, fmt.Errorf("Failed to parse CIDR %s: %v", network, err)
 		}
 		subnet := ipNet.IP.String()
 		mask := net.IP(ipNet.Mask).String()
 		wildcard, err := utils.MaskToWildcard(mask)
 		if err != nil {
-			tflog.Info(ctx, fmt.Sprintf("Failed to convert mask %s to wildcard: %v", mask, err))
-			return cisconf.Eigrp{}
+			return cisconf.Eigrp{}, fmt.Errorf("Failed to convert mask %s to wildcard: %v", mask, err)
 		}
 		networks = append(networks, cisconf.EigrpNetwork{
 			NetworkNumber: subnet,
@@ -43,27 +40,25 @@ func EigrpToCisconf(ctx context.Context, data EigrpModel) cisconf.Eigrp {
 	return cisconf.Eigrp{
 		Asn:     int(data.As.ValueInt64()),
 		Network: networks,
-	}
+	}, nil
 }
 
-func EigrpFromCisconf(ctx context.Context, vlan cisconf.Eigrp) EigrpModel {
+func EigrpFromCisconf(ctx context.Context, vlan cisconf.Eigrp) (EigrpModel, error) {
 	var networks []string
 	for _, network := range vlan.Network {
 		cidr, err := utils.WildcardToCIDR(network.WildCard)
 		if err != nil {
-			tflog.Info(ctx, fmt.Sprintf("Failed to convert wildcard %s to CIDR: %v", network.WildCard, err))
-			return EigrpModel{}
+			return EigrpModel{}, fmt.Errorf("Failed to convert wildcard %s to CIDR: %v", network.WildCard, err)
 		}
 		networks = append(networks, network.NetworkNumber+"/"+fmt.Sprintf("%d", cidr))
 	}
 	list, diags := types.ListValueFrom(ctx, types.StringType, networks)
 	if diags.HasError() {
-		tflog.Error(ctx, fmt.Sprintf("Failed to convert networks to ListValue: %v", diags))
-		return EigrpModel{}
+		return EigrpModel{}, fmt.Errorf("Failed to convert networks to ListValue: %v", diags)
 	}
 
 	return EigrpModel{
 		As:       types.Int64Value(int64(vlan.Asn)),
 		Networks: list,
-	}
+	}, nil
 }

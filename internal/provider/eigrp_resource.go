@@ -110,10 +110,19 @@ func (r *EigrpResource) Create(ctx context.Context, req resource.CreateRequest, 
 	}
 
 	var marshal string
+	var eigrpcisco cisconf.Eigrp
+	eigrpcisco, err = models.EigrpToCisconf(ctx, data)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert EIGRP model to cisconf",
+			fmt.Sprintf("Unable to convert EIGRP model: %s", err),
+		)
+		return
+	}
 	if eigrp == nil {
-		marshal, err = cisconf.Marshal(models.EigrpToCisconf(ctx, data))
+		marshal, err = cisconf.Marshal(eigrpcisco)
 	} else {
-		marshal, err = cisconf.Diff(*eigrp, models.EigrpToCisconf(ctx, data))
+		marshal, err = cisconf.Diff(*eigrp, eigrpcisco)
 	}
 	if err != nil {
 		return
@@ -163,8 +172,14 @@ func (r *EigrpResource) Create(ctx context.Context, req resource.CreateRequest, 
 		}
 	}
 
-	data = models.EigrpFromCisconf(ctx, *eigrp)
-	tflog.Info(ctx, fmt.Sprintf("EIGRP ASN %d created", data.As.ValueInt64()))
+	data, err = models.EigrpFromCisconf(ctx, *eigrp)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert EIGRP from cisconf",
+			fmt.Sprintf("Unable to convert EIGRP: %s", err),
+		)
+		return
+	}
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
 
@@ -209,7 +224,14 @@ func (r *EigrpResource) Read(ctx context.Context, req resource.ReadRequest, resp
 		return
 	}
 
-	data = models.EigrpFromCisconf(ctx, *eigrp)
+	data, err = models.EigrpFromCisconf(ctx, *eigrp)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert EIGRP from cisconf",
+			fmt.Sprintf("Unable to convert EIGRP: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -250,10 +272,19 @@ func (r *EigrpResource) Update(ctx context.Context, req resource.UpdateRequest, 
 	}
 
 	var marshal string
+	var eigrpcisco cisconf.Eigrp
+	eigrpcisco, err = models.EigrpToCisconf(ctx, data)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert EIGRP model to cisconf",
+			fmt.Sprintf("Unable to convert EIGRP model: %s", err),
+		)
+		return
+	}
 	if eigrp == nil {
-		marshal, err = cisconf.Marshal(models.EigrpToCisconf(ctx, data))
+		marshal, err = cisconf.Marshal(eigrpcisco)
 	} else {
-		marshal, err = cisconf.Diff(*eigrp, models.EigrpToCisconf(ctx, data))
+		marshal, err = cisconf.Diff(*eigrp, eigrpcisco)
 	}
 	if err != nil {
 		return
@@ -303,7 +334,14 @@ func (r *EigrpResource) Update(ctx context.Context, req resource.UpdateRequest, 
 		}
 	}
 
-	data = models.EigrpFromCisconf(ctx, *eigrp)
+	data, err = models.EigrpFromCisconf(ctx, *eigrp)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert EIGRP from cisconf",
+			fmt.Sprintf("Unable to convert EIGRP: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

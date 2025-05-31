@@ -126,7 +126,16 @@ func (d *InterfacesDataSource) Read(ctx context.Context, req datasource.ReadRequ
 		return
 	}
 	for _, inter := range runningConfig.Interfaces {
-		data.Interfaces = append(data.Interfaces, models.InterfaceSwitchFromCisconf(ctx, &inter))
+		var interfaceSwitch models.InterfaceSwitchModel
+		interfaceSwitch, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
+		if err != nil {
+			resp.Diagnostics.AddError(
+				"Failed to convert interface",
+				fmt.Sprintf("Unable to convert interface: %s", err),
+			)
+			return
+		}
+		data.Interfaces = append(data.Interfaces, interfaceSwitch)
 	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)

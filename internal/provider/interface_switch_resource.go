@@ -171,7 +171,16 @@ func (r *InterfaceSwitchResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceSwitchToCisconf(ctx, data))
+	var interfaceSwitch *cisconf.CiscoInterface
+	interfaceSwitch, err = models.InterfaceSwitchToCisconf(ctx, data)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface switch model",
+			fmt.Sprintf("Unable to convert interface switch model: %s", err),
+		)
+		return
+	}
+	marshal, err := cisconf.Diff(inter, *interfaceSwitch)
 	if err != nil {
 		return
 	}
@@ -219,7 +228,14 @@ func (r *InterfaceSwitchResource) Create(ctx context.Context, req resource.Creat
 		}
 	}
 
-	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	data, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface switch from cisconf",
+			fmt.Sprintf("Unable to convert interface switch: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -259,7 +275,14 @@ func (r *InterfaceSwitchResource) Read(ctx context.Context, req resource.ReadReq
 		}
 	}
 
-	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	data, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface switch from cisconf",
+			fmt.Sprintf("Unable to convert interface switch: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
@@ -298,7 +321,16 @@ func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.Updat
 		}
 	}
 
-	marshal, err := cisconf.Diff(inter, *models.InterfaceSwitchToCisconf(ctx, data))
+	var interfaceSwitch *cisconf.CiscoInterface
+	interfaceSwitch, err = models.InterfaceSwitchToCisconf(ctx, data)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface switch model",
+			fmt.Sprintf("Unable to convert interface switch model: %s", err),
+		)
+		return
+	}
+	marshal, err := cisconf.Diff(inter, *interfaceSwitch)
 	if err != nil {
 		resp.Diagnostics.AddError(
 			"Failed to diff interface",
@@ -311,9 +343,6 @@ func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.Updat
 	for _, line := range lines {
 		configs = append(configs, line)
 	}
-	tflog.Info(ctx, marshal)
-	tflog.Info(ctx, fmt.Sprintf("Src:\n\n %+v\n\n", inter))
-	tflog.Info(ctx, fmt.Sprintf("Dest:\n\n %+v\n\n", *models.InterfaceSwitchToCisconf(ctx, data)))
 	err = r.client.Configure(configs)
 	if err != nil {
 		resp.Diagnostics.AddError(
@@ -348,7 +377,14 @@ func (r *InterfaceSwitchResource) Update(ctx context.Context, req resource.Updat
 		}
 	}
 
-	data = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	data, err = models.InterfaceSwitchFromCisconf(ctx, &inter)
+	if err != nil {
+		resp.Diagnostics.AddError(
+			"Failed to convert interface switch from cisconf",
+			fmt.Sprintf("Unable to convert interface switch: %s", err),
+		)
+		return
+	}
 
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }
