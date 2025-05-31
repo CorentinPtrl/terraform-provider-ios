@@ -10,6 +10,8 @@ import (
 	"github.com/hashicorp/terraform-plugin-framework/attr"
 	"github.com/hashicorp/terraform-plugin-framework/types"
 	"github.com/hashicorp/terraform-plugin-log/tflog"
+	"net"
+	"terraform-provider-ios/internal/utils"
 )
 
 type InterfaceEthernetModel struct {
@@ -19,30 +21,31 @@ type InterfaceEthernetModel struct {
 }
 
 type IpInterfaceModel struct {
-	Ip   types.String `tfsdk:"ip"`
-	Mask types.String `tfsdk:"mask"`
+	Ip types.String `tfsdk:"ip"`
 }
 
 func (ip IpInterfaceModel) AttributeTypes() map[string]attr.Type {
 	return map[string]attr.Type{
-		"ip":   types.StringType,
-		"mask": types.StringType,
+		"ip": types.StringType,
 	}
 }
 
 func (ip IpInterfaceModel) AttributeValues() map[string]attr.Value {
 	return map[string]attr.Value{
-		"ip":   ip.Ip,
-		"mask": ip.Mask,
+		"ip": ip.Ip,
 	}
 }
 
 func InterfaceEthernetFromCisconf(ctx context.Context, iface *cisconf.CiscoInterface) InterfaceEthernetModel {
 	ipsModel := make([]IpInterfaceModel, len(iface.Ips))
 	for i, ip := range iface.Ips {
+		cidr, err := utils.SubnetMaskToCIDR(ip.Subnet)
+		if err != nil {
+			tflog.Error(ctx, fmt.Sprintf("Failed to convert subnet %s to CIDR: %v", ip.Subnet, err))
+			return InterfaceEthernetModel{}
+		}
 		ipsModel[i] = IpInterfaceModel{
-			Ip:   types.StringValue(ip.Ip),
-			Mask: types.StringValue(ip.Subnet),
+			Ip: types.StringValue(fmt.Sprintf("%s/%d", ip.Ip, cidr)),
 		}
 	}
 	ips, err := types.ListValueFrom(ctx, types.ObjectType{}.WithAttributeTypes(IpInterfaceModel{}.AttributeTypes()), ipsModel)
@@ -82,9 +85,19 @@ func InterfaceEthernetToCisconf(ctx context.Context, iface InterfaceEthernetMode
 		return nil
 	}
 	for _, ip := range ips {
+		if ip.Ip.IsNull() || ip.Ip.ValueString() == "" {
+			tflog.Error(ctx, "IP address is null or empty")
+			return nil
+		}
+		host, ipNet, err := net.ParseCIDR(ip.Ip.ValueString())
+		if err != nil {
+			tflog.Info(ctx, fmt.Sprintf("Failed to parse CIDR %s: %v", ip.Ip.ValueString(), err))
+			return nil
+		}
+		mask := net.IP(ipNet.Mask).String()
 		cisIface.Ips = append(cisIface.Ips, cisconf.Ip{
-			Ip:     ip.Ip.ValueString(),
-			Subnet: ip.Mask.ValueString(),
+			Ip:     host.String(),
+			Subnet: mask,
 		})
 	}
 	var helperAddresses []string

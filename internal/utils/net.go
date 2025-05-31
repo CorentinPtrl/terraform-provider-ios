@@ -29,6 +29,22 @@ func MaskToWildcard(maskStr string) (string, error) {
 	return strings.Join(wildcardParts, "."), nil
 }
 
+func SubnetMaskToCIDR(maskStr string) (int, error) {
+	ip := net.ParseIP(maskStr)
+	if ip == nil {
+		return 0, fmt.Errorf("invalid IP mask string: %s", maskStr)
+	}
+
+	ip = ip.To4()
+	if ip == nil {
+		return 0, fmt.Errorf("not a valid IPv4 mask: %s", maskStr)
+	}
+
+	mask := net.IPv4Mask(ip[0], ip[1], ip[2], ip[3])
+	ones, _ := mask.Size()
+	return ones, nil
+}
+
 func WildcardToMask(wildcard string) (net.IPMask, error) {
 	octets := strings.Split(wildcard, ".")
 	if len(octets) != 4 {

@@ -137,11 +137,9 @@ func (d *VlanDataSource) Read(ctx context.Context, req datasource.ReadRequest, r
 	}
 
 	if vlan == nil {
-		resp.State.RemoveResource(ctx)
 		return
 	}
 
 	data = models.VlanFromCisconf(ctx, *vlan)
-
 	resp.Diagnostics.Append(resp.State.Set(ctx, &data)...)
 }

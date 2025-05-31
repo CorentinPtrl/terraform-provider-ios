@@ -34,6 +34,14 @@ func (r *InterfaceEthernetResource) Metadata(ctx context.Context, req resource.M
 }
 
 func (r *InterfaceEthernetResource) Schema(ctx context.Context, req resource.SchemaRequest, resp *resource.SchemaResponse) {
+	defaultIpList, diags := types.ListValueFrom(ctx, types.ObjectType{}.WithAttributeTypes(models.IpInterfaceModel{}.AttributeTypes()), []models.IpInterfaceModel{})
+	if diags.HasError() {
+		resp.Diagnostics.AddError(
+			"Failed to create default IP defaultIpList",
+			fmt.Sprintf("Unable to create default IP defaultIpList: %s", diags),
+		)
+		return
+	}
 	resp.Schema = schema.Schema{
 		MarkdownDescription: "Switch Interface resource",
 
@@ -49,11 +57,9 @@ func (r *InterfaceEthernetResource) Schema(ctx context.Context, req resource.Sch
 						"ip": schema.StringAttribute{
 							Required: true,
 						},
-						"mask": schema.StringAttribute{
-							Required: true,
-						},
 					},
 				},
+				Default: listdefault.StaticValue(defaultIpList),
 			},
 			"helper_addresses": schema.ListAttribute{
 				Computed:    true,
